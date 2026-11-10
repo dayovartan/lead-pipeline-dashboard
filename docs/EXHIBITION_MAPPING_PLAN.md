@@ -56,7 +56,7 @@ flowchart LR
 Each company appearance gets:
 
 - **Role:** `potential_lead`, `potential_supplier`, both, or `ignore`.
-- **Hardware tags** (for suppliers), a small controlled list we can extend. Starting set: `RAM`, `GPU`, `disks`, `internal_parts`. More can be added per show.
+- **Hardware tags** (for suppliers): as many hardware categories as possible, drawn from each show's own site data, then grouped (for example RAM, GPU, disks, internal parts) so the groups can be used as filters. The list is not fixed upfront; it is decided per show.
 - **Location:** hall and booth, from the import.
 - **Priority:** must-visit, nice-to-visit, or skip.
 
@@ -65,7 +65,8 @@ Mapping starts with a suggestion from the organizer's categories and description
 ### 3.4 Dispatch
 
 - **Category-and-location view:** filter by hardware tag and role, grouped by hall, sorted by booth. Shows company, booth, tags, priority, and who is assigned.
-- **Assign** booths to employees (for electronica 2026: Vartan, Yossi). Each person gets a floor list for their halls and categories.
+- **Coverage map:** we are few people, so who goes to which hall matters less than seeing which halls, rooms and booths have been visited and which have not. The coverage view shows covered versus uncovered. If the exhibition provides a venue map, use it; if not, render coverage as an interactive hierarchy (floors → halls/rooms → booths → companies/suppliers) with React Flow or a similar free diagram library, rather than only a flat list.
+- **Assign** booths to people optionally (for electronica 2026: Vartan, Yossi). Each person can get a floor list for their categories.
 - **Export** the floor list to Excel or print for use on the floor.
 - At the show: mark a booth visited, add a short note and contact. Meeting notes follow the meetings proposal in the leads plan (Obsidian note per company).
 
@@ -116,10 +117,10 @@ A: It is not a fixed set decided upfront. Each exhibition has its own categories
 A: Open.
 
 **Q3. Who goes to which halls at electronica 2026, and on which days?**
-A: Open.
+A: Not important: we are few people. What matters is a coverage map of halls, rooms and booths visited versus not (see 3.4).
 
 **Q4. Do we need a hall map image, or is the hall-and-booth list enough?**
-A: Open.
+A: If the exhibition provides a map, use it. If not, we build our own interactive UI, likely with React Flow or a similar free diagram library, as a hierarchy of floors, rooms, booths, suppliers and companies, showing covered versus uncovered.
 
 **Q5. Does the floor list need to work offline?**
 A: Open.
