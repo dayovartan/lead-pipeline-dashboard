@@ -25,8 +25,8 @@ This is its own app: own repo, deployment, Entra app (`leads-auth`), backend and
 ```
 leads.dayo-tech.com
 ├── /leads                         Leads knowledge base (after the floor)
-│   ├── /leads/board               followed leads, columns by status
-│   ├── /leads/companies           directory: companies + suppliers, search, filters
+│   ├── /leads/board               followed leads, columns by status, role toggle
+│   ├── /leads/companies           directory: one list, role toggle (All / Customers / Suppliers), search, filters
 │   ├── /leads/companies/:id       company window (drawer on desktop, page on phone)
 │   └── /leads/contacts/:id        contact window
 ├── /exhibitions                   Exhibition knowledge base (before and at the show)
@@ -60,8 +60,8 @@ The **show picker** in the top bar sets the current convention for both routes (
 ## 4. Screens, one line each
 
 **Leads**
-- **Board:** columns new / met / follow_up / talking (parked hidden). Card: company, contact, owner, follow-up date (overdue in red), last note line, linked-case count. Filters: show, owner, tag group, role.
-- **Companies:** table with filters (show, role, tag, country, has lead, SAP-linked). Row opens the company window. “Follow” creates a lead.
+- **Board:** one screen for all leads with a role toggle (All / Customers / Suppliers); no separate customer-leads screen. Columns new / met / follow_up / talking (parked hidden). Card: company, role chip, contact, owner, follow-up date (overdue in red), last note line, linked-case count. Filters: show, owner, tag group.
+- **Companies:** table with the same role toggle and filters (show, tag, country, has lead, SAP-linked). Row opens the company window. “Follow” creates a lead with role customer or supplier.
 
 **Exhibitions**
 - **Intake:** upload the Excel, see a dry run (new / updated / unchanged / conflicts), then load. Batch history.
@@ -77,7 +77,7 @@ The **show picker** in the top bar sets the current convention for both routes (
 
 At the show, “visited” plus a note is captured on the floor list. Two actions link the routes:
 1. **Note** — a floor note is stored as a short meeting (`source = floor`), so it shows up in the Leads timeline later.
-2. **Follow** — creates a lead from the appearance (company, contact, show), visible on the Leads board.
+2. **Follow** — creates a lead from the appearance (company, contact, show, role `customer` or `supplier`), visible on the Leads board.
 
 Nothing else crosses over: Exhibitions never calls an MCP, and Leads reads exhibition data only through the shared company, contact, appearance and note tables.
 
@@ -88,7 +88,7 @@ Nothing else crosses over: Exhibitions never calls an MCP, and Leads reads exhib
 All in the app's own database (`leads-db`), defined in LEADS_PLAN.md section 6 and EXHIBITION_MAPPING_PLAN.md section 4:
 
 - `meetings`, `meeting_contacts`, `meeting_actions` — the timeline and its follow-ups.
-- `convention_appearances.role` (`lead` / `supplier` / `both` / `ignore`) and `priority`, per show. The company “kind” shown in the UI is derived from these.
+- `convention_appearances.role` (`customer` / `supplier` / `both` / `ignore`) and `priority`, per show, and `leads.role` (`customer` / `supplier`) for the role toggle. The company “kind” shown in the UI is derived from these.
 - `hardware_tags`, `tag_groups`, `appearance_tags` — chips and filters.
 - `venue_nodes` — the coverage diagram, filled from hall/booth on import, positions saved when people drag.
 - `dispatch_assignments` — visited, who, note.

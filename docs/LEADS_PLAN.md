@@ -1,13 +1,19 @@
-# Convention Leads — plan V2.1
+# Convention Leads — plan V2.2
 
 **Status: planning only — nothing built.**
 
-**V2.1, 10 November 2026 (Asia/Jerusalem).** V2 plus Vartan's answers on stack, storage, meetings and roles:
+**V2.2, 10 November 2026 (Asia/Jerusalem).** Role on leads:
+
+- **Every lead has a `role`: `customer` or `supplier`.** It is set on Follow from the appearance's per-show role (a `both` appearance asks which) and can be edited. The appearance value `lead` is renamed `customer`.
+- **One leads screen with a role toggle** (All / Customers / Suppliers) on the board and the companies directory. No separate customer-leads or suppliers screen.
+- **Customer shows are their own conventions:** Cyber Week TAU 2026 (`cyberweek-tau-2026`, 11 startups) is a convention of its own, every appearance role `customer`, with its own category groups, never mixed with the hardware supplier tags (CPUs, GPUs, PSUs, disks, RAM).
+
+**V2.1, 10 November 2026.** V2 plus Vartan's answers on stack, storage, meetings and roles:
 
 - **Its own app end to end:** own repo (`lead-pipeline-dashboard`), own deployment, own Entra app, own backend and frontend. The frontend is a React SPA (see [UI_PLAN.md](UI_PLAN.md)); Mission Control's stack is not copied.
 - **Its own database:** a separate Postgres container (`leads-db`) on its own named volume, not dbot-db's database, schema or volume. `docker compose down` / `up` never loses data.
 - **Meetings live in the app database:** a meeting is a dated entry with follow-up actions. Obsidian is an export only. Email and Microsoft 365 calendar integrations come later, from the dashboard.
-- **Role is per show, kind is derived:** the role (lead, supplier, both, ignore) sits on each convention appearance; the company-level kind is computed from those roles, never stored.
+- **Role is per show, kind is derived:** the role (customer, supplier, both, ignore; `customer` was `lead` before V2.2) sits on each convention appearance; the company-level kind is computed from those roles, never stored.
 
 **V2, 10 November 2026.** Rewritten after Vartan's review of V1. V1 is in git history (commit `5e46d51`). What changed:
 
@@ -25,7 +31,7 @@ This is still planning only. Do not build, deploy, or contact anyone outside the
 
 ## 1. What this is
 
-A separate convention-leads system next to the existing quotation/sales loop. It is where we **look at companies and suppliers**: one table of companies (exhibitors, customers, leads in SAP, suppliers), their contacts, the shows we met them at, and a detail window that pulls together the knowledge we already have about them. It starts from the electronica 2026 exhibitor list (3,665 companies: addresses, booths, emails, phones, industries) and is reused at later shows.
+A separate convention-leads system next to the existing quotation/sales loop. It is where we **look at companies and suppliers**: one table of companies (exhibitors, customers, leads in SAP, suppliers), their contacts, the shows we met them at, and a detail window that pulls together the knowledge we already have about them. It starts from the electronica 2026 exhibitor list (3,665 companies: addresses, booths, emails, phones, industries) and is reused at later shows. The second convention is the Cyber Week TAU 2026 startup exhibition (`cyberweek-tau-2026`, 11 startups), a customer show: all its companies are potential customers.
 
 A lead is a company we are **following**: who owns it, what was said, when to follow up, and which existing cases belong to it. A lead **starts nothing**. It doesn't open a case, start a workflow or write to SAP. Anything a customer sends to Sales already becomes a case through the existing flow (section 4).
 
@@ -124,11 +130,11 @@ Leads keeps only what no other system holds: the exhibitor catalogue, contacts, 
 ### Tables
 
 - **`conventions`** `(id, name, slug, city, country, starts_on, ends_on)`
-- **`companies`** `(id, name, name_normalized, domain, country, city, address, phone, primary_email, website, categories text[], description, profile_url, sap_card_code, source, import_batch_id, raw jsonb, edited_fields text[])`. There is no stored `kind`: the company view derives it from the roles on its appearances (a company can be a lead at one show and a supplier at the next). `sap_card_code` is the only SAP key stored: a pointer a person confirms from `resolve_customer`, not SAP data (open question 4). Every one of the 3,665 electronica 2026 exhibitors gets a row.
+- **`companies`** `(id, name, name_normalized, domain, country, city, address, phone, primary_email, website, categories text[], description, profile_url, sap_card_code, source, import_batch_id, raw jsonb, edited_fields text[])`. There is no stored `kind`: the company view derives it from the roles on its appearances (a company can be a customer at one show and a supplier at the next). `sap_card_code` is the only SAP key stored: a pointer a person confirms from `resolve_customer`, not SAP data (open question 4). Every one of the 3,665 electronica 2026 exhibitors gets a row.
 - **`import_batches`** `(id, convention_id, source, file, rows, created, updated, skipped, conflicts, at)`
-- **`convention_appearances`** `(id, company_id, convention_id, hall, booth, hall_booth_raw, role, priority, met_at_booth)`, unique on company plus convention. `role` is `lead`, `supplier`, `both` or `ignore`, set per show (EXHIBITION_MAPPING_PLAN 3.3). The next show reuses the company and adds a row here.
+- **`convention_appearances`** `(id, company_id, convention_id, hall, booth, hall_booth_raw, role, priority, met_at_booth)`, unique on company plus convention. `role` is `customer`, `supplier`, `both` or `ignore`, set per show (EXHIBITION_MAPPING_PLAN 3.3). The next show reuses the company and adds a row here.
 - **`contacts`** `(company_id, name, title, email, phone, edited_fields text[])`, unique on company plus lowercased email.
-- **`leads`** `(id, company_id, appearance_id, contact_id, owner, status, notes, follow_up_on, created_at, updated_at)`. Created by the “Follow” (open lead) button, or once by the first Excel migration for rows that already have lead activity. `status` is a short list people set (section 9). No outcome columns, no uniqueness rule.
+- **`leads`** `(id, company_id, appearance_id, contact_id, role, owner, status, notes, follow_up_on, created_at, updated_at)`. Created by the “Follow” (open lead) button, or once by the first Excel migration for rows that already have lead activity. `status` is a short list people set (section 9). `role` is `customer` or `supplier`: copied from the appearance on Follow (a `both` appearance asks which), editable, and the board's role toggle filters on it. A company followed both ways gets one lead per role. No outcome columns, no uniqueness rule.
 - **`lead_cases`** `(lead_id, loop_case_id, linked_by, linked_at, how)`. `loop_case_id` is the case's `intake-…` id, the key cases-mcp and sap-mcp both take. `how` is `manual` or `suggested`. A lead can have many cases.
 - **`case_suggestions`** `(id, lead_id, loop_case_id, reason, status, created_at)`. `reason` is `card_code`, `contact_email` or `domain`. `status` is `pending`, `accepted` or `dismissed`. A dismissed match is not suggested again.
 - **`meetings`** `(id, company_id, lead_id?, appearance_id?, met_on, starts_at?, place, met_by text[], summary_md, source, created_by, created_at, updated_at)` plus **`meeting_contacts`** `(meeting_id, contact_id)`. A meeting is a dated entry with a markdown summary. A floor-list “note” at a show creates a short meeting (`source = floor`).
@@ -212,10 +218,9 @@ Case progress is **not** a status. The card shows its linked cases and their liv
 
 Full UI design is in [UI_PLAN.md](UI_PLAN.md); this is the Leads route's content.
 
-- **Companies:** all imported companies with search and filters (country, category, convention, role, met, has lead, SAP-linked), and a “Follow” button that becomes “View lead”.
-- **Suppliers:** the same directory filtered to companies with a supplier role, with SAP card and latest supplier prices in the window.
+- **Companies:** all imported companies with a **role toggle** (All / Customers / Suppliers), search and filters (country, category, convention, met, has lead, SAP-linked), and a “Follow” button that becomes “View lead”. Suppliers are this same screen with the toggle on Suppliers; the window then also shows SAP card and latest supplier prices.
 - **Detail window (company or supplier):** details, contacts, every convention appearance (booth, role, met or not), the meetings timeline with actions, SAP card (`get_customer_card`, live), linked and suggested cases with their live story and quotation/order numbers, supplier prices (`latest_supplier_prices`) for suppliers, and the activity log.
-- **Leads board:** followed leads only, columns by status (`parked` hidden by default). Each card shows company, owner, follow-up date, linked-case count and the newest case state. Pressing a card opens the full meetings history for that company or contact. Filters by convention and owner. Sort by follow-up date so overdue ones come first.
+- **Leads board:** followed leads only, with the same role toggle (All / Customers / Suppliers) and a role chip on each card, columns by status (`parked` hidden by default). Each card shows company, owner, follow-up date, linked-case count and the newest case state. Pressing a card opens the full meetings history for that company or contact. Filters by convention and owner. Sort by follow-up date so overdue ones come first.
 - **Conventions (optional):** import history, conflicts report and per-show counts.
 
 ---
@@ -229,8 +234,8 @@ For the Leads UI only. Mission Control doesn't call it.
 - `POST /api/companies/{id}/sap-link {card_code}`: confirm a `resolve_customer` match.
 - `GET /api/meetings?company_id=&contact_id=&lead_id=`, `POST /api/meetings`, `PATCH /api/meetings/{id}`, and `POST|PATCH /api/meetings/{id}/actions`.
 - `GET /api/meetings/{id}/export.md` and `GET /api/companies/{id}/export.md`: the Obsidian export.
-- `POST /api/companies/{id}/leads`: the “Follow” button. Body: owner, contact_id, appearance_id, notes.
-- `GET /api/leads?status=&owner=&convention=` and `PATCH /api/leads/{id}` (status, owner, follow-up, notes).
+- `POST /api/companies/{id}/leads`: the “Follow” button. Body: role, owner, contact_id, appearance_id, notes.
+- `GET /api/leads?status=&owner=&convention=&role=` and `PATCH /api/leads/{id}` (status, owner, follow-up, notes).
 - `GET /api/leads/{id}/cases`: linked cases with live state from the MCPs.
 - `POST /api/leads/{id}/cases {loop_case_id}` links a case; `DELETE /api/leads/{id}/cases/{loop_case_id}` unlinks it.
 - `GET /api/leads/{id}/suggestions` and `POST .../suggestions/{id}/accept|dismiss`.
@@ -327,7 +332,8 @@ bogo would only create Jira tickets for leads actually qualified, not all 3,665 
 - Separate app parallel to Mission Control: own repo, deployment, Entra app, backend (FastAPI) and frontend (React SPA). Mission Control stays read-only.
 - Own database (`leads-db`) on its own external volume, separate from dbot-db. `compose down` / `up` keeps all data.
 - Meetings (dated entries with actions) are stored in the app. Obsidian is an export only. Email and M365 calendar integrations later, from the dashboard.
-- Role is per show on the appearance (lead, supplier, both, ignore). Company kind is derived.
+- Role is per show on the appearance (customer, supplier, both, ignore). Company kind is derived.
+- Every lead has a role, `customer` or `supplier`. One leads screen with a role toggle; no separate customer or supplier screen. Customer shows such as Cyber Week TAU 2026 are their own conventions with their own category groups.
 - Link only, never create a case. No Temporal path.
 - No changes to the loop's database: no migration, extension, trigger, column or grant on `public.*`. Plain `ILIKE` search.
 - Cases come through cases-mcp and SAP through sap-mcp. No SAP document ids stored.
@@ -343,6 +349,7 @@ bogo would only create Jira tickets for leads actually qualified, not all 3,665 
 - Joining the Temporal Docker network.
 - Renaming the system Pipeline (`pipeline.dayo-tech.com`, `services/pipeline/`, `pipeline-auth`, `dbot_pipeline`, `pipeline_viewer` / `pipeline_editor`).
 - A path route under `cases.dayo-tech.com/leads`.
+- **From V2.1:** the appearance role value `lead` (now `customer`); a separate Suppliers screen.
 - **From V2:** HTMX/daisyUI copied from Mission Control; a `leads` schema inside the `dbot` database or on dbot-db's volume; `meeting_note_url` as the place for notes; a stored company `kind`; Mission Control's `SELECT` on `leads.lead_cases` inside dbot.
 - **From V1:** polling `public.events` as the main mechanism (any cursor, `seq` or `id`) and a `sync_state` table; `cases.updated_at` plus a trigger; LISTEN/NOTIFY; dbot-db migration 006; `pg_trgm`; per-column `SELECT` grants on `public.mails` / `cases` / `events` for `dbot_leads`; storing or choosing between DocEntry and DocNum; won/lost/in_play/quoted stages set by a sync job; manual drop; the one-open-lead-per-company index; the outcome sync from `case.closed`; a Mission Control bearer token to `leads:8000`.
 
@@ -352,7 +359,7 @@ bogo would only create Jira tickets for leads actually qualified, not all 3,665 
 
 Planning only; don't start until Vartan says to build.
 
-1. **Directory:** the `leads` stack with `leads-db` on its external volumes, migrations, the Excel import with dry run and merge rules, the companies and suppliers lists, search and filters, the detail window with local data.
+1. **Directory:** the `leads` stack with `leads-db` on its external volumes, migrations, the Excel import with dry run and merge rules, the companies directory with the role toggle, search and filters, the detail window with local data.
 2. **Following:** the “Follow” button, status, owner, notes, follow-up date, the board, and meetings with actions (markdown editor, history per company and contact).
 3. **Knowledge in the window:** live SAP card (`get_customer_card`), “Find in SAP” (`resolve_customer`), supplier prices, and linked cases shown through `case_story` and `find_quotation` / `find_order`.
 4. **Case links:** manual link and unlink, suggestions on window open, optional nightly re-check. Optional Mission Control read-only link.

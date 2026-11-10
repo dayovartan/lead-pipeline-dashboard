@@ -8,7 +8,7 @@ Separate from [LEADS_PLAN.md](LEADS_PLAN.md), and follows the same principles. F
 
 ## 1. What this is
 
-Before a show, import the exhibitor list and map every exhibitor into **potential leads** (companies we could sell to) and **potential suppliers** (companies we could buy from). A company can be both.
+Before a show, import the exhibitor list and map every exhibitor into **potential customers** (companies we could sell to) and **potential suppliers** (companies we could buy from). A company can be both. Some shows are mostly one kind: electronica 2026 is a supplier show (hardware), Cyber Week TAU 2026 (`cyberweek-tau-2026`, 11 startups) is a customer show. Each show is its own convention, so customer and supplier categories never mix.
 
 There are too many booths to visit them all. So employees get a **category-and-location view**: which suppliers of which hardware are in which hall and booth. That lets us dispatch people on the floor to meet the right suppliers in person. Follow-up after the show goes through the normal leads-to-case flow; this plan adds nothing new there.
 
@@ -19,7 +19,7 @@ Once the exhibition is mapped in the lead pipeline dashboard UI, it is viewed in
 ```mermaid
 flowchart LR
   A["Get list<br/>our Excel, built from<br/>the show's website"] --> B["Sort<br/>dedupe, normalize,<br/>hall / booth"]
-  B --> C["Map<br/>potential lead / potential supplier<br/>hardware tags"]
+  B --> C["Map<br/>role: customer / supplier<br/>category tags per show"]
   C --> D["Dispatch<br/>category + location view<br/>who visits which booths"]
   D --> E["At the show<br/>meet suppliers in person"]
   E --> F["After<br/>normal leads-to-case flow"]
@@ -55,8 +55,9 @@ flowchart LR
 
 Each company appearance gets:
 
-- **Role:** `lead`, `supplier`, `both` or `ignore`, per show (a company can be a lead at one show and a supplier at the next). The company-level kind in the leads view is derived from these roles.
-- **Hardware tags** (for suppliers): as many hardware categories as possible, drawn from each show's own site data, then grouped (for example RAM, GPU, disks, internal parts) so the groups can be used as filters. The list is not fixed upfront; it is decided per show.
+- **Role:** `customer`, `supplier`, `both` or `ignore`, per show (a company can be a customer at one show and a supplier at the next). The company-level kind in the leads view is derived from these roles. Follow copies it onto the lead as `customer` or `supplier`.
+- **Category tags for customer shows:** the show's own fields (for Cyber Week: agentic AI security, phishing and impersonation, identity, SOC/NDR and so on), in that convention's own tag groups.
+- **Hardware tags** (for supplier shows; CPUs, GPUs, PSUs, disks, RAM and the like): as many hardware categories as possible, drawn from each show's own site data, then grouped (for example RAM, GPU, disks, internal parts) so the groups can be used as filters. The list is not fixed upfront; it is decided per show.
 - **Location:** hall and booth, from the import.
 - **Priority:** must-visit, nice-to-visit, or skip.
 
@@ -64,15 +65,15 @@ Mapping starts with a suggestion from the categories and description we copied f
 
 ### 3.4 Dispatch
 
-- **Category-and-location view:** filter by hardware tag and role, grouped by hall, sorted by booth. Shows company, booth, tags, priority, and who is assigned.
-- **Coverage map:** we are few people, so who goes to which hall matters less than seeing which halls, rooms and booths have been visited and which have not. The coverage view shows covered versus uncovered. If the exhibition provides a venue map, use it; if not, render coverage as an interactive hierarchy (floors → halls/rooms → booths → companies/suppliers) with React Flow or a similar free diagram library, rather than only a flat list.
+- **Category-and-location view:** filter by tag and role (customer / supplier), grouped by hall, sorted by booth. Shows company, booth, tags, priority, and who is assigned.
+- **Coverage map:** we are few people, so who goes to which hall matters less than seeing which halls, rooms and booths have been visited and which have not. The coverage view shows covered versus uncovered. If the exhibition provides a venue map, use it; if not, render coverage as an interactive hierarchy (floors → halls/rooms → booths → companies, each company node carrying its role as a tag: customer or supplier) with React Flow or a similar free diagram library, rather than only a flat list.
 - **Assign** booths to people optionally (for electronica 2026: Vartan, Yossi). Each person can get a floor list for their categories.
 - **Export** the floor list to Excel or print for use on the floor.
-- At the show: mark a booth visited, add a short note and contact. The floor list has two actions: **note** saves a short meeting (dated, markdown, stored in the app database) and **follow** creates a lead on the Leads board. Obsidian is an export only.
+- At the show: mark a booth visited, add a short note and contact. The floor list has two actions: **note** saves a short meeting (dated, markdown, stored in the app database) and **follow** creates a lead on the Leads board, with role `customer` or `supplier` taken from the appearance. Obsidian is an export only.
 
 ### 3.5 After the show
 
-- Suppliers met in person and worth pursuing, and potential leads, are followed up through the normal leads-to-case flow from LEADS_PLAN.md. This plan does not create cases or touch SAP.
+- Suppliers and customers met in person and worth pursuing are followed up through the normal leads-to-case flow from LEADS_PLAN.md. This plan does not create cases or touch SAP.
 
 ---
 
@@ -105,7 +106,7 @@ lead pipeline dashboard (one app)
 ```
 
 - **Map:** the exhibitor table with role, tag and priority columns, suggested values highlighted until confirmed, bulk edit.
-- **Dispatch:** hall-by-hall view, filters by hardware tag, role, priority and assignee; assign and export the floor list.
+- **Dispatch:** hall-by-hall view, filters by tag, role (customer / supplier), priority and assignee; assign and export the floor list.
 - **Floor list:** a phone-friendly list per person with visited and note fields.
 
 ---
@@ -122,7 +123,7 @@ A: Open.
 A: Not important: we are few people. What matters is a coverage map of halls, rooms and booths visited versus not (see 3.4).
 
 **Q4. Do we need a hall map image, or is the hall-and-booth list enough?**
-A: If the exhibition provides a map, use it. If not, we build our own interactive UI, likely with React Flow or a similar free diagram library, as a hierarchy of floors, rooms, booths, suppliers and companies, showing covered versus uncovered.
+A: If the exhibition provides a map, use it. If not, we build our own interactive UI, likely with React Flow or a similar free diagram library, as a hierarchy of floors, rooms, booths and companies, each company tagged with its role (customer or supplier), showing covered versus uncovered.
 
 **Q5. Does the floor list need to work offline?**
 A: Open.
