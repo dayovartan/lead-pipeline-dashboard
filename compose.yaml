@@ -1,0 +1,61 @@
+# leads stack: docker compose -p leads up -d
+# - No published port. leads-auth (dayo-internal-services/stacks/sso) is the only way in, over leads-front.
+# - Data lives on external volumes, created once, so down / up / rebuild / down -v never deletes it:
+#     docker volume create leads-pgdata
+#     docker volume create leads-files
+#     docker network create leads-front
+# - No DSN to dbot-db anywhere. Cases and SAP come only through cases-mcp / sap-mcp read tools.
+name: leads
+
+services:
+  leads-db:
+    image: postgres:16-alpine
+    container_name: leads-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: leads
+      POSTGRES_USER: dbot_leads
+      POSTGRES_PASSWORD_FILE: /run/secrets/leads_db_password
+    secrets: [leads_db_password]
+    volumes:
+      - leads-pgdata:/var/lib/postgresql/data
+    networks: [leads-data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbot_leads -d leads"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  leads:
+    build: .
+    image: leads:latest
+    container_name: leads
+    restart: unless-stopped
+    depends_on:
+      leads-db:
+        condition: service_healthy
+    environment:
+      LEADS_DB_HOST: leads-db
+      LEADS_FILES_DIR: /data/files
+    secrets: [leads_db_password, mcp_token]
+    volumes:
+      - leads-files:/data/files
+    networks: [leads-front, leads-data]
+
+secrets:
+  leads_db_password:
+    file: ./secrets/leads_db_password.txt
+  mcp_token:
+    file: ./secrets/mcp_token.txt
+
+volumes:
+  leads-pgdata:
+    external: true
+  leads-files:
+    external: true
+
+networks:
+  leads-front:
+    external: true      # shared only with leads-auth
+  leads-data:
+    internal: true      # app <-> leads-db only

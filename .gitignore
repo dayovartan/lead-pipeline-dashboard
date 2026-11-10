@@ -1,0 +1,17 @@
+# secrets never in git
+secrets/*
+!secrets/README.md
+.env
+*.env
+!*.env.example
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# node
+node_modules/
+frontend/dist/
+# local data
+data/
+.DS_Store

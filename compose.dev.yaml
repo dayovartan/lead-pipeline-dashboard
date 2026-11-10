@@ -1,0 +1,14 @@
+# Local development only (never on yos-dev): publish the app on 127.0.0.1:8000 and
+# stand in for leads-auth with a dev user.
+#   docker compose -f compose.yaml -f compose.dev.yaml up -d --build
+services:
+  leads:
+    environment:
+      LEADS_DEV_USER: dev@dayo-tech.com
+      LEADS_DEV_ROLES: leads_editor
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks: [leads-front, leads-data, leads-dev]
+
+networks:
+  leads-dev: {}   # leads-data is internal (no host access), so publishing needs a normal network
