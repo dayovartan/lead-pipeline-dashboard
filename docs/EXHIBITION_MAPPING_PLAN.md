@@ -27,12 +27,10 @@ flowchart LR
 
 ---
 
-## 2. Principles (same as the leads plan)
+## 2. Principles
 
-- **No migrations to dbot-db** and no changes to the loop's schema. Query the existing schema as it is.
-- **No extensions, triggers, or LISTEN/NOTIFY** on the loop.
-- **Read-only against the loop.** Nothing here writes to cases, events, mails, or SAP.
-- **The `leads` schema holds this data**, alongside the companies, conventions and appearances in the leads plan.
+- **No migrations to dbot-db** and no changes to the loop's schema.
+- **No extensions, triggers, or LISTEN/NOTIFY.**
 - **Access:** the same Entra app and `leads-auth` pattern. Own redirect URL for `leads.dayo-tech.com` and own token, separate from the Temporal auth and the other apps' auth. `leads-auth` is the only entry point to the app's port.
 - **Excel is import and export only**, never the store.
 - **Self-contained at this stage:** no connections to cases, SAP, MCPs, or any other external system. The exhibition view is its own knowledge base and UI, separate from the dashboard's other systems.
