@@ -31,4 +31,4 @@ A synthetic workbook for trying the intake: `backend/.venv/bin/python backend/sc
 
 ## Production (yos-dev), not deployed yet
 
-`docker compose -p leads up -d` with `compose.yaml` only (no published port). `leads-auth` goes into dayo-internal-services `stacks/sso`; it lives in dayo-internal-services `stacks/sso` (`leads-auth`); runbook in [deploy/DEPLOY.md](deploy/DEPLOY.md). Nightly backup: [deploy/backup.sh](deploy/backup.sh).
+`docker compose -p leads up -d` with `compose.yaml` only (no published port). `leads-auth` lives in dayo-internal-services `stacks/sso`; runbook in [deploy/DEPLOY.md](deploy/DEPLOY.md). Nightly backup: [deploy/backup.sh](deploy/backup.sh).
