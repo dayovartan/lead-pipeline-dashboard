@@ -90,6 +90,17 @@ Search uses plain `ILIKE` and Postgres built-in full text with the `simple` conf
 
 ## 5. Screens
 
+**App hierarchy.** The lead pipeline dashboard is one app (a single SPA). Inside it, **leads** is one route with its own screens and UI, and **exhibitions** is a separate route, its own section of the same app. The three screens below all live inside the exhibitions route.
+
+```
+lead pipeline dashboard (one app)
+├── /leads         leads screens and UI
+└── /exhibitions   exhibition mapping
+    ├── map
+    ├── dispatch
+    └── floor list
+```
+
 - **Map:** the exhibitor table with role, tag and priority columns, suggested values highlighted until confirmed, bulk edit.
 - **Dispatch:** hall-by-hall view, filters by hardware tag, role, priority and assignee; assign and export the floor list.
 - **Floor list:** a phone-friendly list per person with visited and note fields.
