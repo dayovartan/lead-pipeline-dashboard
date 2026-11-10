@@ -14,11 +14,11 @@ There are too many booths to visit them all. So employees get a **category-and-l
 
 Reusable for every future exhibition: **get list → sort → map → dispatch.**
 
-Once the exhibition is mapped in the lead pipeline dashboard UI, it is viewed in a **separate exhibition knowledge base with its own UI**, distinct from the existing leads knowledge base UI. At this stage the exhibition mapping needs no MCPs, no cases, and no connection to any other system; it is self-contained.
+Once the exhibition is mapped in the lead pipeline dashboard UI, it is viewed in a **separate exhibition knowledge base with its own UI**, distinct from the existing leads knowledge base UI. At this stage the exhibition mapping needs no MCPs, no cases, and no connection to any other system; it is self-contained. The one exception is **Follow**: following a mapped company creates a lead in the leads app.
 
 ```mermaid
 flowchart LR
-  A["Get list<br/>exhibitor export (Excel)"] --> B["Sort<br/>dedupe, normalize,<br/>hall / booth"]
+  A["Get list<br/>our Excel, built from<br/>the show's website"] --> B["Sort<br/>dedupe, normalize,<br/>hall / booth"]
   B --> C["Map<br/>potential lead / potential supplier<br/>hardware tags"]
   C --> D["Dispatch<br/>category + location view<br/>who visits which booths"]
   D --> E["At the show<br/>meet suppliers in person"]
@@ -33,7 +33,7 @@ flowchart LR
 - **No extensions, triggers, or LISTEN/NOTIFY.**
 - **Access:** the same Entra app and `leads-auth` pattern. Own redirect URL for `leads.dayo-tech.com` and own token, separate from the Temporal auth and the other apps' auth. `leads-auth` is the only entry point to the app's port.
 - **Excel is import and export only**, never the store.
-- **Self-contained at this stage:** no connections to cases, SAP, MCPs, or any other external system. The exhibition view is its own knowledge base and UI, separate from the dashboard's other systems.
+- **Self-contained at this stage:** no connections to cases, SAP, MCPs, or any other external system. The exhibition view is its own knowledge base and UI, separate from the dashboard's other systems. The one exception is **Follow**, which creates a lead in the leads app.
 
 ---
 
@@ -49,7 +49,7 @@ flowchart LR
 
 - Dedupe companies across shows (domain first, then normalized name; manual merge for groups).
 - Split Hall/Booth into `hall` and `booth` so the view can group by hall.
-- Keep the organizer's categories as they came (raw), for reference.
+- Keep the categories we copied from the exhibition's website as they came (raw), for reference.
 
 ### 3.3 Map
 
@@ -60,7 +60,7 @@ Each company appearance gets:
 - **Location:** hall and booth, from the import.
 - **Priority:** must-visit, nice-to-visit, or skip.
 
-Mapping starts with a suggestion from the organizer's categories and description (simple keyword rules, e.g. "memory / DRAM" → `RAM`). A person confirms or corrects it. Nothing counts as mapped until a person confirms.
+Mapping starts with a suggestion from the categories and description we copied from the exhibition's website (simple keyword rules, e.g. "memory / DRAM" → `RAM`). A person confirms or corrects it. Nothing counts as mapped until a person confirms.
 
 ### 3.4 Dispatch
 

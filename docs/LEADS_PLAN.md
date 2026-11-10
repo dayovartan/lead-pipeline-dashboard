@@ -231,7 +231,7 @@ For the Leads UI only. Mission Control doesn't call it.
 - `GET /api/meetings?company_id=&contact_id=&lead_id=`, `POST /api/meetings`, `PATCH /api/meetings/{id}`, and `POST|PATCH /api/meetings/{id}/actions`.
 - `GET /api/meetings/{id}/export.md` and `GET /api/companies/{id}/export.md`: the Obsidian export.
 - `POST /api/companies/{id}/leads`: the “Follow” button. Body: owner, contact_id, appearance_id, notes.
-- `GET /api/leads?status=&owner=&convention=` and `PATCH /api/leads/{id}` (status, owner, follow-up, notes, meeting-note URL).
+- `GET /api/leads?status=&owner=&convention=` and `PATCH /api/leads/{id}` (status, owner, follow-up, notes).
 - `GET /api/leads/{id}/cases`: linked cases with live state from the MCPs.
 - `POST /api/leads/{id}/cases {loop_case_id}` links a case; `DELETE /api/leads/{id}/cases/{loop_case_id}` unlinks it.
 - `GET /api/leads/{id}/suggestions` and `POST .../suggestions/{id}/accept|dismiss`.
@@ -289,6 +289,8 @@ This is the proposal sent to Zima for electronica 2026, and is separate from the
 **After the show (only if Vartan approves):** an event summary note with a lead ranking and the follow-up plan; draft follow-up emails as cards for Vartan to send himself. The folder layout plus the note template can be saved as a reusable convention skill.
 
 **Shared key:** company name plus contact email, across the Excel row, the Jira task and the note. Excel has a `Meeting note` link column.
+
+**Later, into the app:** once Leads is built, the interim Obsidian meeting notes and the links in the Excel `Meeting note` column are imported into the app as meetings, matched on the shared key, so the notes do not stay a separate store.
 
 **Zima’s Excel columns**
 
