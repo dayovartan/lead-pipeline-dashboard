@@ -1,8 +1,8 @@
 import MDEditor from '@uiw/react-md-editor/nohighlight'
-import { useMediaQuery } from '@/lib/hooks'
+import { useTheme } from '@/lib/theme'
 
 export function MdEditorImpl({ value, onChange, height = 220 }: { value: string; onChange: (v: string) => void; height?: number }) {
-  const dark = useMediaQuery('(prefers-color-scheme: dark)')
+  const { dark } = useTheme()
   return (
     <div data-color-mode={dark ? 'dark' : 'light'}>
       <MDEditor
@@ -18,7 +18,7 @@ export function MdEditorImpl({ value, onChange, height = 220 }: { value: string;
 }
 
 export function MdViewImpl({ source }: { source: string }) {
-  const dark = useMediaQuery('(prefers-color-scheme: dark)')
+  const { dark } = useTheme()
   return (
     <div data-color-mode={dark ? 'dark' : 'light'}>
       <MDEditor.Markdown source={source} skipHtml />

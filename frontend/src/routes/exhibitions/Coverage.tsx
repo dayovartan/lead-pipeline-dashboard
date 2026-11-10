@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
+import { useTheme } from '@/lib/theme'
 import { Background, Controls, MiniMap, ReactFlow, type Node, type NodeProps, type NodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { Hammer, Image as ImageIcon, Network } from 'lucide-react'
@@ -236,12 +237,14 @@ function Hierarchy({ nodes, booths, canEdit, onOpen, onMove }: { nodes: VenueNod
       alive = false
     }
   }, [nodes, booths, canEdit, onOpen])
+  const { dark } = useTheme()
 
   if (err) return <ErrorState error={err} />
   if (!rfNodes) return <Loading label="Laying out the venue…" />
   return (
     <div className="h-[calc(100vh-15rem)] min-h-[420px] overflow-hidden rounded-lg border bg-muted/10">
       <ReactFlow
+        colorMode={dark ? 'dark' : 'light'}
         nodes={rfNodes}
         edges={[]}
         nodeTypes={nodeTypes}

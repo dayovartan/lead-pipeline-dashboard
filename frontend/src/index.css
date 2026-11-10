@@ -26,8 +26,7 @@
     --radius: 0.5rem;
     color-scheme: light;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
+  .dark {
       --background: 222 47% 7%;
       --foreground: 210 40% 96%;
       --card: 222 40% 10%;
@@ -48,8 +47,20 @@
       --input: 217 33% 24%;
       --ring: 213 94% 62%;
       color-scheme: dark;
-    }
   }
+
+  /* Accent themes: only primary and ring change; light/dark come from the mode. */
+  [data-accent='teal'] { --primary: 173 80% 30%; --ring: 173 80% 36%; }
+  [data-accent='violet'] { --primary: 262 70% 50%; --ring: 262 70% 58%; }
+  [data-accent='amber'] { --primary: 32 95% 44%; --ring: 32 95% 50%; --primary-foreground: 0 0% 100%; }
+  [data-accent='rose'] { --primary: 346 77% 46%; --ring: 346 77% 54%; }
+  [data-accent='slate'] { --primary: 222 47% 20%; --ring: 222 30% 40%; }
+  .dark[data-accent='teal'] { --primary: 172 66% 50%; --ring: 172 66% 50%; --primary-foreground: 222 47% 8%; }
+  .dark[data-accent='violet'] { --primary: 263 85% 72%; --ring: 263 85% 72%; --primary-foreground: 222 47% 8%; }
+  .dark[data-accent='amber'] { --primary: 38 92% 56%; --ring: 38 92% 56%; --primary-foreground: 222 47% 8%; }
+  .dark[data-accent='rose'] { --primary: 350 89% 68%; --ring: 350 89% 68%; --primary-foreground: 222 47% 8%; }
+  .dark[data-accent='slate'] { --primary: 214 32% 85%; --ring: 214 32% 70%; --primary-foreground: 222 47% 8%; }
+
   * { @apply border-border; }
   html, body, #root { height: 100%; }
   body {
@@ -60,7 +71,7 @@
   :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-1 ring-offset-background; }
 }
 
-/* markdown editor follows the system theme */
+/* markdown editor follows the app theme */
 .wmde-markdown, .w-md-editor { font-family: inherit !important; }
 .w-md-editor { background: hsl(var(--background)) !important; color: hsl(var(--foreground)) !important; }
 
@@ -70,9 +81,7 @@
 
 /* React Flow theming */
 .react-flow { --xy-background-color: transparent; }
-@media (prefers-color-scheme: dark) {
-  .react-flow { --xy-controls-button-background-color: hsl(var(--card)); --xy-controls-button-color: hsl(var(--foreground)); --xy-controls-button-border-color: hsl(var(--border)); --xy-minimap-background-color: hsl(var(--card)); }
-}
+.dark .react-flow { --xy-controls-button-background-color: hsl(var(--card)); --xy-controls-button-color: hsl(var(--foreground)); --xy-controls-button-border-color: hsl(var(--border)); --xy-minimap-background-color: hsl(var(--card)); }
 
 @media print {
   .no-print { display: none !important; }

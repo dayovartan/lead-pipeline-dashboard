@@ -5,6 +5,8 @@ import { useCurrentShow } from '@/lib/show'
 import { cn } from '@/lib/utils'
 import { GlobalSearch } from './GlobalSearch'
 import { ShowPicker } from './ShowPicker'
+import { ThemeMenu } from './ThemeMenu'
+import { useThemeForUser } from '@/lib/theme'
 import { Badge } from './ui/badge'
 
 const sub = 'rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground aria-[current=page]:bg-accent aria-[current=page]:text-foreground'
@@ -13,6 +15,7 @@ export function TopBar() {
   const { pathname } = useLocation()
   const { slug } = useCurrentShow()
   const { data: me } = useMe()
+  useThemeForUser(me?.email)
   const onLeads = !pathname.startsWith('/exhibitions')
   const q = slug ? `?show=${encodeURIComponent(slug)}` : ''
   const exBase = slug ? `/exhibitions/${encodeURIComponent(slug)}` : '/exhibitions'
@@ -48,6 +51,7 @@ export function TopBar() {
           <span className="max-w-[10rem] truncate text-muted-foreground" title={me?.email}>
             {me?.name || me?.email || ''}
           </span>
+          <ThemeMenu />
         </div>
       </div>
       <div className="mx-auto flex max-w-[1600px] items-center gap-1 overflow-x-auto px-4 pb-1.5">

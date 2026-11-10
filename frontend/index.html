@@ -8,6 +8,15 @@
     <meta name="theme-color" content="#0f172a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Leads</title>
+    <script>
+      // apply the saved theme before first paint (see src/lib/theme.ts)
+      try {
+        var t = JSON.parse(localStorage.getItem('leads-theme:last') || 'null') || {}
+        var d = t.mode === 'dark' || (t.mode !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        if (d) document.documentElement.classList.add('dark')
+        if (t.accent && t.accent !== 'blue') document.documentElement.setAttribute('data-accent', t.accent)
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
