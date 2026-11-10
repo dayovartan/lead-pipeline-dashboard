@@ -33,7 +33,7 @@ flowchart LR
 - **The `leads` schema holds this data**, alongside the companies, conventions and appearances in the leads plan.
 - **Access:** the same Entra app and `leads-auth` pattern. Own redirect URL for `leads.dayo-tech.com` and own token, separate from the Temporal auth and the other apps' auth. `leads-auth` is the only entry point to the app's port.
 - **Excel is import and export only**, never the store.
-- Case and SAP details, when needed, come from the existing MCPs (cases-mcp, sap-mcp), not from copies stored here.
+- **Self-contained at this stage:** no connections to cases, SAP, MCPs, or any other external system. The exhibition view is its own knowledge base and UI, separate from the dashboard's other systems.
 
 ---
 
