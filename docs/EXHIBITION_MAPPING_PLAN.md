@@ -132,7 +132,8 @@ A: Open.
 
 ## 7. Build order (only when Vartan says to build)
 
-1. Import and sort (reuses the leads import).
-2. Mapping with suggested tags and confirm.
-3. Dispatch view, assignments and floor-list export.
-4. Visited and notes on the floor list.
+Priority: complete data and durable storage first, polished UI later.
+
+1. **Get all the data.** For each exhibition, fill the Excel files we create from the exhibition's website: exhibitor data, categories, and a venue map if one exists. If there is no map, plan the React Flow fallback.
+2. **Backend and frontend ready for intake.** The backend and a basic frontend for viewing this data are in place before any polished UI.
+3. **Load the Excel data into the database.** The schema and the containers that hold it are already deployed, with storage on persistent volumes, so a redeploy never loses databases that are already filled.
