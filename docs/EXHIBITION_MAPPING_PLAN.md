@@ -41,9 +41,9 @@ flowchart LR
 
 ### 3.1 Get list
 
-- Import the organizer's exhibitor export (for electronica 2026, Zima's Excel: Company, Country, City, Address, Phone, Primary email, Website, Hall/Booth, Categories, Description, Profile URL).
-- Creates or updates companies and one convention appearance per company for this show (hall and booth live on the appearance, because they change between shows).
-- Re-import is safe: it updates imported fields only and never overwrites tags, assignments or notes made in the app.
+- **We create the Excel file and fill it in ourselves** for each show (for electronica 2026: Company, Country, City, Address, Phone, Primary email, Website, Hall/Booth, Categories, Description, Profile URL).
+- **The database is then loaded from that Excel.** Loading creates or updates companies and one convention appearance per company for this show. Hall and booth live on the appearance, because they change between shows.
+- We can keep filling in or correcting the Excel and load it again. Reloading is safe: it updates only the fields that come from the Excel and never overwrites tags, assignments or notes made in the app.
 
 ### 3.2 Sort
 
