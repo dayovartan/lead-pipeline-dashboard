@@ -14,6 +14,8 @@ There are too many booths to visit them all. So employees get a **category-and-l
 
 Reusable for every future exhibition: **get list → sort → map → dispatch.**
 
+Once the exhibition is mapped in the lead pipeline dashboard UI, it is viewed in a **separate exhibition knowledge base with its own UI**, distinct from the existing leads knowledge base UI. At this stage the exhibition mapping needs no MCPs, no cases, and no connection to any other system; it is self-contained.
+
 ```mermaid
 flowchart LR
   A["Get list<br/>exhibitor export (Excel)"] --> B["Sort<br/>dedupe, normalize,<br/>hall / booth"]
