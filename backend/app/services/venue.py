@@ -13,7 +13,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import Company, ConventionAppearance, DispatchAssignment, VenueNode
+from ..models import AppearanceMapping, AppearanceTag, Company, ConventionAppearance, DispatchAssignment, VenueNode
 from .normalize import booth_sort_key
 
 KIND_BY_DEPTH = {1: "floor", 2: "hall", 3: "booth"}
@@ -99,6 +99,19 @@ def coverage(db: Session, convention_id: int) -> dict:
         .outerjoin(DispatchAssignment, DispatchAssignment.appearance_id == ConventionAppearance.id)
         .where(ConventionAppearance.convention_id == convention_id)
     ).all()
+    # tags and suggested role per appearance, so the coverage legend can filter and highlight
+    tags_by_app: dict[int, list[dict]] = {}
+    for at in db.scalars(
+        select(AppearanceTag)
+        .join(ConventionAppearance, ConventionAppearance.id == AppearanceTag.appearance_id)
+        .where(ConventionAppearance.convention_id == convention_id)
+    ):
+        tags_by_app.setdefault(at.appearance_id, []).append({"tag_id": at.tag_id, "confirmed": bool(at.confirmed)})
+    suggested_role = dict(db.execute(
+        select(AppearanceMapping.appearance_id, AppearanceMapping.suggested_role)
+        .join(ConventionAppearance, ConventionAppearance.id == AppearanceMapping.appearance_id)
+        .where(ConventionAppearance.convention_id == convention_id)
+    ).all())
     booths = []
     unplaced = {"total": 0, "visited": 0, "must_visit_uncovered": 0, "skipped": 0}
     for a, company_name, visited in sorted(rows, key=lambda r: booth_sort_key(r[0].hall, r[0].booth)):
@@ -113,7 +126,8 @@ def coverage(db: Session, convention_id: int) -> dict:
             s["skipped"] += a.priority == "skip"
         if node:
             booths.append({"node_id": node.id, "appearance_id": a.id, "company_id": a.company_id, "company_name": company_name,
-                           "priority": a.priority, "visited": visited, "role": a.role})
+                           "priority": a.priority, "visited": visited, "role": a.role,
+                           "suggested_role": suggested_role.get(a.id), "tags": tags_by_app.get(a.id, [])})
     nodes = sorted(paths.items(), key=lambda kv: (len(kv[0]), booth_sort_key(kv[0][-2] if len(kv[0]) > 1 else kv[0][0], kv[0][-1])))
     return {
         "nodes": [{"id": n.id, "parent_id": n.parent_id, "kind": n.kind, "label": n.label,

@@ -14,6 +14,7 @@ import { useCanEdit } from '@/lib/hooks'
 import { useOpenCompany } from '@/lib/openCompany'
 import { cn } from '@/lib/utils'
 import { layoutVenue } from '@/lib/venueLayout'
+import { CoverageLegend, HighlightContext, computeHighlight, useHighlight, useLegendFilter } from '@/components/CoverageLegend'
 
 type AreaData = { node: VenueNode; width: number; height: number }
 type BoothData = { node: VenueNode; booths: CoverageBooth[]; onOpen: (b: CoverageBooth) => void }
@@ -44,11 +45,14 @@ const AreaNode = memo(function AreaNode({ data }: NodeProps<Node<AreaData>>) {
   const { node, width, height } = data
   const s = node.stats ?? { total: 0, visited: 0, must_visit_uncovered: 0, skipped: 0 }
   const pct = s.total ? Math.round((100 * s.visited) / s.total) : 0
+  const hl = useHighlight()
+  const hits = hl.nodeCount.get(node.id) ?? 0
   return (
     <div
       style={{ width, height }}
       className={cn(
-        'rounded-xl border-2 border-dotted',
+        'rounded-xl border-2 border-dotted transition-opacity',
+        hl.active && !hits && 'opacity-40',
         node.kind === 'floor' ? 'border-muted-foreground/40 bg-muted/20' : 'border-muted-foreground/50 bg-background/60',
         s.must_visit_uncovered > 0 && 'border-red-500/60',
       )}
@@ -57,6 +61,7 @@ const AreaNode = memo(function AreaNode({ data }: NodeProps<Node<AreaData>>) {
         <span className="text-sm font-semibold capitalize">{node.kind === 'booth' ? '' : `${node.kind} `}{node.label}</span>
         <span className="tabular-nums text-muted-foreground">{s.visited}/{s.total} visited</span>
         {s.must_visit_uncovered ? <span className="font-medium text-red-600 dark:text-red-400">{s.must_visit_uncovered} must-visit left</span> : null}
+        {hl.active && hits ? <span className="rounded bg-primary px-1.5 font-medium text-primary-foreground">{hits} match</span> : null}
       </div>
       <div className="mx-3 mt-1 h-1 overflow-hidden rounded-full bg-muted">
         <div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} />
@@ -68,14 +73,22 @@ const AreaNode = memo(function AreaNode({ data }: NodeProps<Node<AreaData>>) {
 const BoothNode = memo(function BoothNode({ data }: NodeProps<Node<BoothData>>) {
   const { node, booths, onOpen } = data
   const st = boothState(booths, node.stats)
+  const hl = useHighlight()
+  const hit = hl.active && booths.some((b) => hl.match.has(b.appearance_id))
   return (
-    <div className={cn('h-full w-[156px] rounded-md border-2 px-2 py-1 text-[11px] leading-4 shadow-sm', stateCls[st])}>
+    <div
+      className={cn(
+        'h-full w-[156px] rounded-md border-2 px-2 py-1 text-[11px] leading-4 shadow-sm transition-opacity',
+        stateCls[st],
+        hl.active && (hit ? 'ring-[3px] ring-primary ring-offset-1 ring-offset-background' : 'opacity-25'),
+      )}
+    >
       <div className="font-semibold tabular-nums">{node.label}</div>
       {booths.slice(0, 3).map((b) => (
         <button
           key={b.appearance_id}
           type="button"
-          className="nodrag block w-full truncate text-left hover:underline"
+          className={cn('nodrag block w-full truncate text-left hover:underline', hl.active && hl.match.has(b.appearance_id) && 'font-semibold text-primary')}
           title={b.company_name}
           onClick={(e) => {
             e.stopPropagation()
@@ -100,6 +113,9 @@ export default function Coverage() {
   const openCompany = useOpenCompany()
   const conv = useQuery({ queryKey: ['convention', slug], queryFn: () => api.convention(slug) })
   const cov = useQuery({ queryKey: ['coverage', slug], queryFn: () => api.coverage(slug) })
+  const tags = useQuery({ queryKey: ['tags', slug], queryFn: () => api.tags(slug) })
+  const [filter, setFilter] = useLegendFilter()
+  const highlight = useMemo(() => computeHighlight(cov.data?.nodes ?? [], cov.data?.booths ?? [], filter), [cov.data, filter])
   const [view, setView] = useState<'map' | 'tree' | null>(null)
   const hasMap = !!conv.data?.venue_map_url
   const mode = view ?? (hasMap ? 'map' : 'tree')
@@ -150,6 +166,9 @@ export default function Coverage() {
       </PageHeader>
       <Legend />
       <InlineError error={rebuild.error ?? move.error} />
+      <HighlightContext.Provider value={highlight}>
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_17rem]">
+      <div className="order-2 min-w-0 lg:order-1">
       {cov.isLoading ? <Loading /> : cov.isError ? <ErrorState error={cov.error} retry={cov.refetch} /> : !cov.data?.nodes.length ? (
         <Empty title="No venue layout yet">{canEdit ? 'Load the Excel on the intake page, then press "Rebuild from hall/booth".' : 'An editor needs to load the exhibitor list first.'}</Empty>
       ) : mode === 'map' && hasMap ? (
@@ -157,6 +176,17 @@ export default function Coverage() {
       ) : (
         <Hierarchy nodes={cov.data.nodes} booths={cov.data.booths} canEdit={canEdit} onOpen={openBooth} onMove={(id, x, y) => move.mutate({ id, x, y })} />
       )}
+      </div>
+      <CoverageLegend
+        className="order-1 self-start lg:order-2 lg:sticky lg:top-28"
+        booths={cov.data?.booths ?? []}
+        tagList={tags.data}
+        filter={filter}
+        onChange={setFilter}
+        matchCount={highlight.match.size}
+      />
+      </div>
+      </HighlightContext.Provider>
     </>
   )
 }
@@ -178,6 +208,7 @@ function Legend() {
 }
 
 function MapView({ url, nodes }: { url: string; nodes: VenueNode[] }) {
+  const hl = useHighlight()
   const halls = nodes.filter((n) => n.kind === 'hall' || n.kind === 'room').sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -189,10 +220,13 @@ function MapView({ url, nodes }: { url: string; nodes: VenueNode[] }) {
           const s = h.stats
           const pct = s.total ? Math.round((100 * s.visited) / s.total) : 0
           return (
-            <li key={h.id} className={cn('rounded-md border p-2 text-sm', s.must_visit_uncovered && 'border-red-500/60')}>
+            <li key={h.id} className={cn('rounded-md border p-2 text-sm', s.must_visit_uncovered && 'border-red-500/60', hl.active && (hl.nodeCount.get(h.id) ? 'ring-2 ring-primary' : 'opacity-40'))}>
               <div className="flex items-baseline justify-between">
                 <span className="font-medium capitalize">{h.kind} {h.label}</span>
-                <span className="tabular-nums text-xs text-muted-foreground">{s.visited}/{s.total}</span>
+                <span className="tabular-nums text-xs text-muted-foreground">
+                  {hl.active ? <span className="mr-2 font-medium text-primary">{hl.nodeCount.get(h.id) ?? 0} match</span> : null}
+                  {s.visited}/{s.total}
+                </span>
               </div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} /></div>
               {s.must_visit_uncovered ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{s.must_visit_uncovered} must-visit left</p> : null}

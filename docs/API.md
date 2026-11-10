@@ -67,7 +67,7 @@ Headers matched case-insensitively. Categories split on `;`, `,` or newline.
 - `POST /suggest` → runs keyword rules + category rules over unconfirmed appearances, returns counts
 - `GET /categories` → raw organizer categories with counts and mapped tag ids
 - `GET /tags` → `{groups: [{id, name, tags: [{id, name, count}]}], ungrouped: [...]}`; `POST /tag-groups {name}`; `POST /tags {name, group_id?}`; `PATCH /tags/{id} {name?, group_id?}`; `POST /category-rules {category, tag_id}`; `DELETE /category-rules/{id}`
-- `GET /coverage` → `{nodes: [{id, parent_id, kind, label, x, y, stats: {total, visited, must_visit_uncovered, skipped}}], booths: [{node_id, appearance_id, company_name, priority, visited, role}]}`; `POST /venue/rebuild` (from hall/booth); `PATCH /venue/nodes/{id} {x, y}`
+- `GET /coverage` → `{nodes: [{id, parent_id, kind, label, x, y, stats: {total, visited, must_visit_uncovered, skipped}}], booths: [{node_id, appearance_id, company_id, company_name, priority, visited, role, suggested_role, tags: [{tag_id, confirmed}]}]}`; `POST /venue/rebuild` (from hall/booth); `PATCH /venue/nodes/{id} {x, y}`
 - `GET /dispatch?tag=&role=&priority=&assignee=` → `{halls: [{hall, appearances: [...same as appearances items]}]}`
 - `PUT /appearances/{id}/dispatch {assignee?, visited?, note?}`
 - `GET /floor/{person}?hall=` → phone list; `POST /floor/{appearance_id}/note {text, contact?: {name, email, title, phone}}` → creates a short meeting (`source=floor`) and marks visited; `POST /floor/{appearance_id}/follow` → creates a lead

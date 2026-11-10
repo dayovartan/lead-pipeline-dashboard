@@ -164,6 +164,12 @@ def test_coverage_and_rebuild_keep_positions(show, client, db):
     assert len(cov["booths"]) == 4
 
     acme = show["Acme Memory GmbH"]
+    # booths carry role, suggested role and tags so the legend can filter
+    tag = client.post(P + "/tags", json={"name": "COV_RAM"}).json()
+    client.post(P + f"/appearances/{acme['id']}/tags", json={"tag_id": tag["id"]})
+    client.patch(P + f"/appearances/{acme['id']}", json={"role": "supplier"})
+    b = next(x for x in client.get(P + "/coverage").json()["booths"] if x["appearance_id"] == acme["id"])
+    assert b["role"] == "supplier" and {"tag_id": tag["id"], "confirmed": True} in b["tags"] and "suggested_role" in b
     client.patch(P + f"/appearances/{acme['id']}", json={"priority": "must_visit"})
     assert client.patch(P + f"/venue/nodes/{a3['id']}", json={"x": 10, "y": 20}).status_code == 200
     client.put(P + f"/appearances/{show['Delta Systems']['id']}/dispatch", json={"visited": True})

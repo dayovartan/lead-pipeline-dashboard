@@ -412,6 +412,8 @@ export interface CoverageBooth {
   priority: Priority | null
   visited: boolean
   role: Role | null
+  suggested_role?: Role | null
+  tags?: { tag_id: number; confirmed: boolean }[]
 }
 export interface Coverage {
   nodes: VenueNode[]
