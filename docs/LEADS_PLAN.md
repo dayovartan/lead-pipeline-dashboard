@@ -16,7 +16,6 @@
 - **Cases and SAP come through the MCPs we already have**: cases-mcp for case knowledge, sap-mcp for quotation and order numbers. Leads stores no SAP document ids and does not pick between DocEntry and DocNum.
 - **Leads are followed, never closed.** No won/lost stages, no close or drop logic, no one-open-lead-per-company rule, no stage machine.
 - Auth spelled out: its own Entra app, `leads-auth` as the only way in. Mission Control reads lead links with a read-only `SELECT`, no API token.
-- The GDPR section is removed: Leads uses only data from Dayo's internal system, collected with a waiver / NDA and never shared.
 
 Names stay **Leads** (`leads`, `dbot_leads`, `leads-auth`, `leads.dayo-tech.com`, `leads_viewer`, `leads_editor`). The “Pipeline” rename was cancelled. Never use pipeline names for those.
 
@@ -333,8 +332,6 @@ bogo would only create Jira tickets for leads actually qualified, not all 3,665 
 - No changes to the loop's database: no migration, extension, trigger, column or grant on `public.*`. Plain `ILIKE` search.
 - Cases come through cases-mcp and SAP through sap-mcp. No SAP document ids stored.
 - Own Entra app for Leads. `leads-auth` is the only way to port 8000. No API token for Mission Control.
-- No GDPR section: Leads uses only internal data collected with a waiver / NDA, never shared.
-- Name stays Leads.
 - Deploy on yos-dev as the `leads` stack (app + `leads-db`), no published port, behind edge Caddy and `leads-auth`.
 
 ---
@@ -347,7 +344,7 @@ bogo would only create Jira tickets for leads actually qualified, not all 3,665 
 - Renaming the system Pipeline (`pipeline.dayo-tech.com`, `services/pipeline/`, `pipeline-auth`, `dbot_pipeline`, `pipeline_viewer` / `pipeline_editor`).
 - A path route under `cases.dayo-tech.com/leads`.
 - **From V2:** HTMX/daisyUI copied from Mission Control; a `leads` schema inside the `dbot` database or on dbot-db's volume; `meeting_note_url` as the place for notes; a stored company `kind`; Mission Control's `SELECT` on `leads.lead_cases` inside dbot.
-- **From V1:** polling `public.events` as the main mechanism (any cursor, `seq` or `id`) and a `sync_state` table; `cases.updated_at` plus a trigger; LISTEN/NOTIFY; dbot-db migration 006; `pg_trgm`; per-column `SELECT` grants on `public.mails` / `cases` / `events` for `dbot_leads`; storing or choosing between DocEntry and DocNum; won/lost/in_play/quoted stages set by a sync job; manual drop; the one-open-lead-per-company index; the outcome sync from `case.closed`; the GDPR section and its export/delete endpoints; a Mission Control bearer token to `leads:8000`.
+- **From V1:** polling `public.events` as the main mechanism (any cursor, `seq` or `id`) and a `sync_state` table; `cases.updated_at` plus a trigger; LISTEN/NOTIFY; dbot-db migration 006; `pg_trgm`; per-column `SELECT` grants on `public.mails` / `cases` / `events` for `dbot_leads`; storing or choosing between DocEntry and DocNum; won/lost/in_play/quoted stages set by a sync job; manual drop; the one-open-lead-per-company index; the outcome sync from `case.closed`; a Mission Control bearer token to `leads:8000`.
 
 ---
 
