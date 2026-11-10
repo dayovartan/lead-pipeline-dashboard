@@ -34,8 +34,8 @@ def test_sample_v1_then_v2(clean, client, db):
     assert v2["conflicts"] >= 20
     assert {x["field"] for x in v2["report"]["conflicts"]} >= {"phone"}
     db.expire_all()
-    # new exhibitors with lead activity get a lead; existing ones never do
-    assert db.scalar(select(func.count()).select_from(Lead)) == leads_after_v1 + 1
+    # re-imports never create leads, even for exhibitors new to the show (LEADS_PLAN 7)
+    assert db.scalar(select(func.count()).select_from(Lead)) == leads_after_v1  # re-imports never create leads
     assert db.scalar(select(func.count()).select_from(Contact)) >= contacts_after_v1
     assert set(db.scalars(select(Company.phone).where(Company.phone != "app"))) <= {None} | {
         r.get("phone") for r in ex2 if r["company"].startswith("Newcomer")}

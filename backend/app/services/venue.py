@@ -112,7 +112,7 @@ def coverage(db: Session, convention_id: int) -> dict:
             s["must_visit_uncovered"] += a.priority == "must_visit" and not visited
             s["skipped"] += a.priority == "skip"
         if node:
-            booths.append({"node_id": node.id, "appearance_id": a.id, "company_name": company_name,
+            booths.append({"node_id": node.id, "appearance_id": a.id, "company_id": a.company_id, "company_name": company_name,
                            "priority": a.priority, "visited": visited, "role": a.role})
     nodes = sorted(paths.items(), key=lambda kv: (len(kv[0]), booth_sort_key(kv[0][-2] if len(kv[0]) > 1 else kv[0][0], kv[0][-1])))
     return {

@@ -20,7 +20,7 @@ Rules:
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from ..models import (
@@ -81,6 +81,16 @@ class Importer:
                        appearances_created=0, conflicts=0)
         self.ct = dict(rows=0, created=0, updated=0, unchanged=0, skipped=0, duplicates=0, conflicts=0)
         self.leads_created = 0
+        # LEADS_PLAN 7: only the first real import of a show creates leads; later re-imports never do.
+        self.first_import = not db.scalar(
+            select(ImportBatch.id).where(
+                ImportBatch.convention_id == convention.id,
+                ImportBatch.dry_run.is_(False),
+                ImportBatch.id != batch.id,
+                ImportBatch.id < (batch.id or 2**31),
+                or_(ImportBatch.report.is_(None), ~ImportBatch.report.has_key("failed")),
+            ).limit(1)
+        )
         self._load()
 
     # ---- indexes over what is already in the database ----
@@ -259,7 +269,7 @@ class Importer:
             else:
                 self.ex["unchanged"] += 1
 
-        if company.id in self.new_appearances and company.id not in self.lead_done:
+        if self.first_import and company.id in self.new_appearances and company.id not in self.lead_done:
             self.maybe_lead(company, row)
 
     def appearance(self, company: Company, row: dict, duplicate: bool) -> bool:

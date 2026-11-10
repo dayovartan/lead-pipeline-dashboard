@@ -253,11 +253,11 @@ def test_leads_only_on_first_import(conv, client, db):
     # Re-import with different lead activity: no new leads, lead fields untouched.
     rows[0].update(lead_status="parked", owner="Someone else", notes="changed")
     rows[3].update(owner="Vartan")  # existing appearance, new activity: still no lead
-    rows.append(exhibitor("Brand New Co", website="brandnew.io", owner="Yossi"))  # new at this show: gets one
+    rows.append(exhibitor("Brand New Co", website="brandnew.io", owner="Yossi"))  # new at this show: still no lead (LEADS_PLAN 7)
     b2 = upload(client, rows)
-    assert b2["report"]["leads_created"] == 1
+    assert b2["report"]["leads_created"] == 0
     db.expire_all()
-    assert count(db, Lead) == 4
+    assert count(db, Lead) == 3
     acme = db.get(Lead, acme.id)
     assert (acme.status, acme.owner, acme.notes) == ("follow_up", "Vartan", "wants DDR5 quote")
 
