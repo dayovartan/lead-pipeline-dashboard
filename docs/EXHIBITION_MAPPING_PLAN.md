@@ -55,7 +55,7 @@ flowchart LR
 
 Each company appearance gets:
 
-- **Role:** `potential_lead`, `potential_supplier`, both, or `ignore`.
+- **Role:** `lead`, `supplier`, `both` or `ignore`, per show (a company can be a lead at one show and a supplier at the next). The company-level kind in the leads view is derived from these roles.
 - **Hardware tags** (for suppliers): as many hardware categories as possible, drawn from each show's own site data, then grouped (for example RAM, GPU, disks, internal parts) so the groups can be used as filters. The list is not fixed upfront; it is decided per show.
 - **Location:** hall and booth, from the import.
 - **Priority:** must-visit, nice-to-visit, or skip.
@@ -68,7 +68,7 @@ Mapping starts with a suggestion from the organizer's categories and description
 - **Coverage map:** we are few people, so who goes to which hall matters less than seeing which halls, rooms and booths have been visited and which have not. The coverage view shows covered versus uncovered. If the exhibition provides a venue map, use it; if not, render coverage as an interactive hierarchy (floors → halls/rooms → booths → companies/suppliers) with React Flow or a similar free diagram library, rather than only a flat list.
 - **Assign** booths to people optionally (for electronica 2026: Vartan, Yossi). Each person can get a floor list for their categories.
 - **Export** the floor list to Excel or print for use on the floor.
-- At the show: mark a booth visited, add a short note and contact. Meeting notes follow the meetings proposal in the leads plan (Obsidian note per company).
+- At the show: mark a booth visited, add a short note and contact. The floor list has two actions: **note** saves a short meeting (dated, markdown, stored in the app database) and **follow** creates a lead on the Leads board. Obsidian is an export only.
 
 ### 3.5 After the show
 
@@ -76,12 +76,14 @@ Mapping starts with a suggestion from the organizer's categories and description
 
 ---
 
-## 4. Data (in schema `leads`)
+## 4. Data (in the app's own database)
 
-Reuses `conventions`, `companies`, `convention_appearances`, `contacts`, `import_batches` from the leads plan. Adds, all inside `leads`:
+Lives in the app's own Postgres (`leads-db`, its own external volume; not dbot-db). Reuses `conventions`, `companies`, `convention_appearances` (which carries `hall`, `booth`, `role` and `priority`), `contacts`, `import_batches` and `meetings` from the leads plan. Adds:
 
 - **`hardware_tags`** `(id, name)` — the controlled list (RAM, GPU, disks, internal_parts, …).
-- **`appearance_mapping`** `(appearance_id, role, priority, confirmed_by, confirmed_at)`.
+- **`tag_groups`** `(id, convention_id, name)`, and `hardware_tags.group_id`, so groups work as filters per show.
+- **`appearance_mapping`** `(appearance_id, suggested_role, confirmed_by, confirmed_at)`: the confirmation record; the confirmed `role` and `priority` sit on the appearance.
+- **`venue_nodes`** `(id, convention_id, parent_id, kind, label, x, y)`: floor → hall/room → booth for the coverage diagram (see UI_PLAN.md).
 - **`appearance_tags`** `(appearance_id, tag_id, suggested, confirmed)`.
 - **`dispatch_assignments`** `(appearance_id, assignee, visited, visited_at, note)`.
 
@@ -126,7 +128,7 @@ A: If the exhibition provides a map, use it. If not, we build our own interactiv
 A: Open.
 
 **Q6. Where do visit notes go long-term: the app, Obsidian, or both (link only)?**
-A: Open.
+A: The app database. A visit note is a short meeting; Obsidian is an export only.
 
 ---
 
@@ -136,4 +138,4 @@ Priority: complete data and durable storage first, polished UI later.
 
 1. **Get all the data.** For each exhibition, fill the Excel files we create from the exhibition's website: exhibitor data, categories, and a venue map if one exists. If there is no map, plan the React Flow fallback.
 2. **Backend and frontend ready for intake.** The backend and a basic frontend for viewing this data are in place before any polished UI.
-3. **Load the Excel data into the database.** The schema and the containers that hold it are already deployed, with storage on persistent volumes, so a redeploy never loses databases that are already filled.
+3. **Load the Excel data into the database.** The schema and the containers that hold it are already deployed, with storage on persistent volumes, so a redeploy never loses databases that are already filled. The app has its own database container (`leads-db`) on external named volumes (`leads-pgdata`, `leads-files`), so `docker compose down` and `up` keep all data.

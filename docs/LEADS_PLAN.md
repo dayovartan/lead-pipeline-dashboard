@@ -1,14 +1,21 @@
-# Convention Leads — plan V2
+# Convention Leads — plan V2.1
 
 **Status: planning only — nothing built.**
 
-**V2, 10 November 2026 (Asia/Jerusalem).** Rewritten after Vartan's review of V1. V1 is in git history (commit `5e46d51`). What changed:
+**V2.1, 10 November 2026 (Asia/Jerusalem).** V2 plus Vartan's answers on stack, storage, meetings and roles:
+
+- **Its own app end to end:** own repo (`lead-pipeline-dashboard`), own deployment, own Entra app, own backend and frontend. The frontend is a React SPA (see [UI_PLAN.md](UI_PLAN.md)); Mission Control's stack is not copied.
+- **Its own database:** a separate Postgres container (`leads-db`) on its own named volume, not dbot-db's database, schema or volume. `docker compose down` / `up` never loses data.
+- **Meetings live in the app database:** a meeting is a dated entry with follow-up actions. Obsidian is an export only. Email and Microsoft 365 calendar integrations come later, from the dashboard.
+- **Role is per show, kind is derived:** the role (lead, supplier, both, ignore) sits on each convention appearance; the company-level kind is computed from those roles, never stored.
+
+**V2, 10 November 2026.** Rewritten after Vartan's review of V1. V1 is in git history (commit `5e46d51`). What changed:
 
 - Leads is a **directory and a follow-up view**, not an event-driven machine. Companies, suppliers and their detail windows come first. Events are one optional feed, not the spine.
 - **Nothing is added to the loop's database.** No migration 006, no `pg_trgm`, no LISTEN/NOTIFY, no trigger, no new column on `public.*`, no per-column grants. Search is plain `ILIKE`.
 - **Cases and SAP come through the MCPs we already have**: cases-mcp for case knowledge, sap-mcp for quotation and order numbers. Leads stores no SAP document ids and does not pick between DocEntry and DocNum.
 - **Leads are followed, never closed.** No won/lost stages, no close or drop logic, no one-open-lead-per-company rule, no stage machine.
-- Auth spelled out: its own Entra app, `leads-auth` as the only way in. Mission Control reads `leads.lead_cases` with a `SELECT` grant.
+- Auth spelled out: its own Entra app, `leads-auth` as the only way in. Mission Control reads lead links with a read-only `SELECT`, no API token.
 - The GDPR section is removed: Leads uses only data from Dayo's internal system, collected with a waiver / NDA and never shared.
 
 Names stay **Leads** (`leads`, `dbot_leads`, `leads-auth`, `leads.dayo-tech.com`, `leads_viewer`, `leads_editor`). The “Pipeline” rename was cancelled. Never use pipeline names for those.
@@ -23,9 +30,9 @@ A separate convention-leads system next to the existing quotation/sales loop. It
 
 A lead is a company we are **following**: who owns it, what was said, when to follow up, and which existing cases belong to it. A lead **starts nothing**. It doesn't open a case, start a workflow or write to SAP. Anything a customer sends to Sales already becomes a case through the existing flow (section 4).
 
-Companies, contacts and leads live in Postgres in their own `leads` schema (section 6), not in the wiki. The Outline wiki or Obsidian can later show generated pages as a view for people (“Never type the same fact in two places”). Excel is an import/export format only, not the store.
+Companies, contacts, leads and meetings live in the app's **own database** (section 6), not in dbot-db and not in the wiki. Obsidian is an export only (“Never type the same fact in two places”). Excel is an import/export format only, not the store.
 
-The UI is a **new, separate app** that runs parallel to Mission Control (its own codebase and screens), not a section of it. Mission Control stays read-only and never writes to `leads`.
+The dashboard is a **new, separate app** that runs parallel to Mission Control: its own repo, deployment, Entra app, backend and frontend, not a section of Mission Control. It has two routes, `/leads` and `/exhibitions` ([UI_PLAN.md](UI_PLAN.md), [EXHIBITION_MAPPING_PLAN.md](EXHIBITION_MAPPING_PLAN.md)). Mission Control stays read-only and never writes to `leads`.
 
 ---
 
@@ -42,15 +49,16 @@ The UI is a **new, separate app** that runs parallel to Mission Control (its own
 
 ## 3. Architecture
 
-One FastAPI service at `services/leads/` serves the API and the UI (HTMX/daisyUI, same stack as Mission Control) in one container named `leads`.
+One FastAPI service serves the JSON API and the built React SPA (static files) in one container named `leads`. Its database is a separate Postgres container, `leads-db`. Stack details are in [UI_PLAN.md](UI_PLAN.md).
 
-Deployed on the existing Internal Services host **yos-dev (10.0.7.56)**, next to Plane, Outline, Mission Control and the MCPs. No new server. The deploy shape copies Mission Control: its own compose project (`docker compose -p leads` or Portainer), its own stack, **no published port**.
+Deployed on the existing Internal Services host **yos-dev (10.0.7.56)**, next to Plane, Outline, Mission Control and the MCPs. No new server. Its own compose project (`docker compose -p leads` or Portainer), its own stack, **no published port**.
 
-- **Networks:** a private `leads-front` network shared only with `leads-auth`, plus `dbot-db` for its own `leads` tables. The app is **not** on `proxy`, so `leads-auth` is the only container that can reach `leads:8000`. Not on `mcp`, not on Temporal.
+- **Networks:** a private `leads-front` network shared only with `leads-auth`, and a private `leads-data` network shared only with `leads-db`. Not on `dbot-db`. The app is **not** on `proxy`, so `leads-auth` is the only container that can reach `leads:8000`. Not on `mcp`, not on Temporal.
 - **MCP access:** over HTTPS the way the agents reach it: `https://mcp-dev.dayo-tech.com:7806/mcp` (cases-mcp) and `:7801/mcp` (sap-mcp), with a bearer token from a secret file and the Caddy root CA trusted in the container. No need to join the `mcp` Docker network.
 - **Route:** **`leads.dayo-tech.com`** (proposed). Covered by the edge Caddy wildcard `*.dayo-tech.com` cert. Plain `/` paths. Add the name in AD DNS (10.0.7.121, pointing at 10.0.7.56) and in the name registry in dayo-internal-services `dns.md`.
 - **Auth:** a new oauth2-proxy instance, `leads-auth`, in `dayo-internal-services/stacks/sso`, next to `cases-auth`, with its own Entra app (section 12).
-- **Code** lives in d-bot-orchestra; the route and `leads-auth` live in dayo-internal-services. That's two repos, the same split as Mission Control.
+- **Persistence:** `leads-db` stores its data on a named volume `leads-pgdata`, and uploads (Excel files, venue maps) on `leads-files`. Both are declared `external: true` and created once (`docker volume create`), so `docker compose down`, `up`, a rebuild or even `down -v` never deletes them. The app and SPA containers hold no state, so rebuilding them loses nothing. Migrations run on start and only ever add.
+- **Code** lives in the `lead-pipeline-dashboard` repo (backend, frontend, compose, migrations). The route and `leads-auth` live in dayo-internal-services (sso and edge stacks).
 
 A path such as `cases.dayo-tech.com/leads` is **not recommended**: it would sit behind Mission Control's login proxy and blur Mission Control's read-only boundary.
 
@@ -59,10 +67,10 @@ flowchart LR
   User["Browser"] --> Caddy["Edge caddy-docker-proxy<br/>yos-dev 10.0.7.56"]
   Caddy --> Auth["leads-auth<br/>oauth2-proxy / own Entra app"]
   Auth -->|"leads-front only"| App["leads container<br/>FastAPI API + UI<br/>no published port"]
-  App -->|"read/write leads.* only"| DB["Postgres<br/>schema leads"]
+  App -->|"leads-data network"| DB["leads-db<br/>own Postgres, volume leads-pgdata"]
   App -->|"HTTPS + bearer<br/>read tools only"| CMCP["cases-mcp :7806<br/>cases, threads, case story"]
   App -->|"HTTPS + bearer<br/>read tools only"| SMCP["sap-mcp :7801<br/>BP card, quotation, order"]
-  MC["Mission Control<br/>read-only"] -->|"SELECT leads.lead_cases"| DB
+  MC["Mission Control<br/>read-only"] -.->|"optional: read-only role,<br/>SELECT lead_cases"| DB
   Loop["Graph watcher + CaseWorkflow"] -->|"writes cases / events<br/>(unchanged)"| Public["dbot public.*<br/>loop tables"]
   CMCP -->|"reads"| Public
   App -.->|"no Temporal, no case create,<br/>no SAP writes, no loop schema changes"| Loop
@@ -102,7 +110,7 @@ Write tools (`save_case`, `upsert_case`, `mark_thread`, `mark_threads_bulk`, `sa
 
 **Events** are reached through `case_story`, which already reads them. Leads does not poll `public.events` and keeps no event cursor.
 
-**Mission Control** (`cases.dayo-tech.com`, FastAPI, Jinja, HTMX, daisyUI, Entra, read-only) is the pattern to copy for the UI and deploy, and it can show “from lead X” on a case page (section 12).
+**Mission Control** (`cases.dayo-tech.com`, read-only) stays as it is. It can optionally show “from lead X” on a case page (section 12).
 
 **Today there is no** companies, contacts, conventions or leads table, no leads agent and no convention importer.
 
@@ -110,27 +118,29 @@ Write tools (`save_case`, `upsert_case`, `mark_thread`, `mark_threads_bulk`, `sa
 
 ## 6. Data (`leads` schema)
 
-Leads keeps only what no other system holds: the exhibitor catalogue, contacts, show appearances, the people's follow-up notes, and links to cases. Everything about cases and SAP is fetched live (section 5).
+Leads keeps only what no other system holds: the exhibitor catalogue, contacts, show appearances and their per-show roles, meetings and follow-up actions, and links to cases. Everything about cases and SAP is fetched live (section 5).
 
-**Where it lives (working assumption, see open question 1):** a `leads` schema in the same Postgres, created and migrated by Leads' **own** migrations in `services/leads/migrations/`, owned by role `dbot_leads`. It never alters `public.*` or the dbot-db migrations (001–005). This is what lets Mission Control read `leads.lead_cases` with a plain `SELECT` grant.
+**Where it lives (decided):** the app's own Postgres container `leads-db`, database `leads`, schema `leads`, owned by role `dbot_leads` (name kept). Migrations live in the repo and run on start. Nothing in dbot-db changes: not its database, schema, roles or volume. The exhibition tables ([EXHIBITION_MAPPING_PLAN.md](EXHIBITION_MAPPING_PLAN.md) section 4) live in the same database.
 
 ### Tables
 
 - **`conventions`** `(id, name, slug, city, country, starts_on, ends_on)`
-- **`companies`** `(id, name, name_normalized, kind, domain, country, city, address, phone, primary_email, website, categories text[], description, profile_url, sap_card_code, source, import_batch_id, raw jsonb, edited_fields text[])`. `kind` is `exhibitor`, `customer`, `supplier` or several (a company can be all three). `sap_card_code` is the only SAP key stored: a pointer a person confirms from `resolve_customer`, not SAP data (open question 4). Every one of the 3,665 electronica 2026 exhibitors gets a row.
+- **`companies`** `(id, name, name_normalized, domain, country, city, address, phone, primary_email, website, categories text[], description, profile_url, sap_card_code, source, import_batch_id, raw jsonb, edited_fields text[])`. There is no stored `kind`: the company view derives it from the roles on its appearances (a company can be a lead at one show and a supplier at the next). `sap_card_code` is the only SAP key stored: a pointer a person confirms from `resolve_customer`, not SAP data (open question 4). Every one of the 3,665 electronica 2026 exhibitors gets a row.
 - **`import_batches`** `(id, convention_id, source, file, rows, created, updated, skipped, conflicts, at)`
-- **`convention_appearances`** `(company_id, convention_id, hall_booth, met_at_booth)`, unique on company plus convention. The next show reuses the company and adds a row here.
+- **`convention_appearances`** `(id, company_id, convention_id, hall, booth, hall_booth_raw, role, priority, met_at_booth)`, unique on company plus convention. `role` is `lead`, `supplier`, `both` or `ignore`, set per show (EXHIBITION_MAPPING_PLAN 3.3). The next show reuses the company and adds a row here.
 - **`contacts`** `(company_id, name, title, email, phone, edited_fields text[])`, unique on company plus lowercased email.
-- **`leads`** `(id, company_id, appearance_id, contact_id, owner, status, notes, follow_up_on, meeting_note_url, created_at, updated_at)`. Created by the “Follow” (open lead) button, or once by the first Excel migration for rows that already have lead activity. `status` is a short list people set (section 9). No outcome columns, no uniqueness rule.
+- **`leads`** `(id, company_id, appearance_id, contact_id, owner, status, notes, follow_up_on, created_at, updated_at)`. Created by the “Follow” (open lead) button, or once by the first Excel migration for rows that already have lead activity. `status` is a short list people set (section 9). No outcome columns, no uniqueness rule.
 - **`lead_cases`** `(lead_id, loop_case_id, linked_by, linked_at, how)`. `loop_case_id` is the case's `intake-…` id, the key cases-mcp and sap-mcp both take. `how` is `manual` or `suggested`. A lead can have many cases.
 - **`case_suggestions`** `(id, lead_id, loop_case_id, reason, status, created_at)`. `reason` is `card_code`, `contact_email` or `domain`. `status` is `pending`, `accepted` or `dismissed`. A dismissed match is not suggested again.
+- **`meetings`** `(id, company_id, lead_id?, appearance_id?, met_on, starts_at?, place, met_by text[], summary_md, source, created_by, created_at, updated_at)` plus **`meeting_contacts`** `(meeting_id, contact_id)`. A meeting is a dated entry with a markdown summary. A floor-list “note” at a show creates a short meeting (`source = floor`).
+- **`meeting_actions`** `(id, meeting_id, text, owner, due_on, done_at)`: the follow-ups from a meeting. A lead's `follow_up_on` defaults to its earliest open action.
 - **`lead_activity`** `(lead_id, kind, at, actor, data)`: who opened, edited, linked or unlinked what, and when.
 
 **Dedupe:** the company key is the domain from the website or email, falling back to the normalized name, with manual merge for groups with several legal entities. The contact key is company plus email.
 
 ### Search
 
-Plain `ILIKE '%…%'` on `name`, `name_normalized`, `domain` and contact names/emails, plus filters on country, category, convention, kind, has-lead and SAP-linked. Ordinary btree indexes inside the `leads` schema. No extension. 3,665 rows is small: server-side paging at about 50 a page is enough. `name_normalized` (lowercased, punctuation and legal suffixes such as GmbH / Ltd / בע"מ stripped) does the work fuzzy search would otherwise do.
+Plain `ILIKE '%…%'` on `name`, `name_normalized`, `domain` and contact names/emails, plus filters on country, category, convention, role, has-lead and SAP-linked. Ordinary btree indexes inside the app's database. No extension. 3,665 rows is small: server-side paging at about 50 a page is enough. `name_normalized` (lowercased, punctuation and legal suffixes such as GmbH / Ltd / בע"מ stripped) does the work fuzzy search would otherwise do.
 
 ---
 
@@ -138,14 +148,14 @@ Plain `ILIKE '%…%'` on `name`, `name_normalized`, `domain` and contact names/e
 
 Three sources feed the app. Once a row is in Postgres, none of them is the store any more, and **an import never blindly overwrites what a person changed in the app.**
 
-1. **Zima's live Excel** (Exhibitors and Contacts sheets) is the catalogue import. First run: upsert all 3,665 companies, appearances and contacts. Also create a lead only for rows that already have lead activity (Met at booth, Lead status, Owner, Notes or Follow-up date), seeding `owner`, `notes`, `follow_up_on`, `meeting_note_url`, `met_at_booth` and `status` where the Lead status maps cleanly (open question 6). Later re-imports never create leads.
-2. **Obsidian notes** (`Conventions/<event-year>/<Company>.md`) fill `meeting_note_url` when it is empty. They never overwrite `leads.notes` once a person has edited notes in the app.
+1. **Zima's live Excel** (Exhibitors and Contacts sheets) is the catalogue import. First run: upsert all 3,665 companies, appearances and contacts. Also create a lead only for rows that already have lead activity (Met at booth, Lead status, Owner, Notes or Follow-up date), seeding `owner`, `notes`, `follow_up_on`, `met_at_booth` and `status` where the Lead status maps cleanly (open question 6). Later re-imports never create leads.
+2. **Obsidian notes** (`Conventions/<event-year>/<Company>.md`) written before the app exists can be loaded once as meetings. After that the app is the store and Obsidian is an export only.
 3. **Jira tasks** under [DEV-205](https://dayo-tech.atlassian.net/browse/DEV-205) can seed `follow_up_on` only when it is empty. They never overwrite a date set in the app.
 
 **Rules on re-import**
 
 - Catalogue columns (name, address, phone, primary_email, website, categories, description, profile_url, hall_booth and contact fields) update only when the column is **not** in that row's `edited_fields`. Saving a field in the UI adds it there.
-- App-owned columns are never written by an import: `sap_card_code` once confirmed, `kind` once edited, and on leads `owner`, `status`, `notes`, `follow_up_on`, `meeting_note_url`, plus case links and suggestions.
+- App-owned columns are never written by an import: `sap_card_code` once confirmed, appearance `role`, `priority` and tags, on leads `owner`, `status`, `notes`, `follow_up_on`, and all meetings, actions, case links and suggestions.
 - When the file and an edited field disagree, the app value stays and the row is counted under `import_batches.conflicts` and listed on an import report, so someone can look rather than lose either value.
 - `raw jsonb` is always replaced with the latest source row, so the original is kept next to the edited value.
 - Contacts upsert on company plus lowercased email. Re-import never deletes a contact that exists only in the app.
@@ -201,10 +211,12 @@ Case progress is **not** a status. The card shows its linked cases and their liv
 
 ## 10. Screens
 
-- **Companies:** all imported companies with search and filters (country, category, convention, kind, met, has lead, SAP-linked), and a “Follow” button that becomes “View lead”.
-- **Suppliers:** the same directory filtered to `kind = supplier`, with SAP card and latest supplier prices in the window.
-- **Detail window (company or supplier):** details, contacts, every convention appearance (booth, met or not), meeting-note link, SAP card (`get_customer_card`, live), linked and suggested cases with their live story and quotation/order numbers, supplier prices (`latest_supplier_prices`) for suppliers, and the activity log.
-- **Leads board:** followed leads only, columns by status (`parked` hidden by default). Each card shows company, owner, follow-up date, linked-case count and the newest case state. Filters by convention and owner. Sort by follow-up date so overdue ones come first.
+Full UI design is in [UI_PLAN.md](UI_PLAN.md); this is the Leads route's content.
+
+- **Companies:** all imported companies with search and filters (country, category, convention, role, met, has lead, SAP-linked), and a “Follow” button that becomes “View lead”.
+- **Suppliers:** the same directory filtered to companies with a supplier role, with SAP card and latest supplier prices in the window.
+- **Detail window (company or supplier):** details, contacts, every convention appearance (booth, role, met or not), the meetings timeline with actions, SAP card (`get_customer_card`, live), linked and suggested cases with their live story and quotation/order numbers, supplier prices (`latest_supplier_prices`) for suppliers, and the activity log.
+- **Leads board:** followed leads only, columns by status (`parked` hidden by default). Each card shows company, owner, follow-up date, linked-case count and the newest case state. Pressing a card opens the full meetings history for that company or contact. Filters by convention and owner. Sort by follow-up date so overdue ones come first.
 - **Conventions (optional):** import history, conflicts report and per-show counts.
 
 ---
@@ -213,9 +225,11 @@ Case progress is **not** a status. The card shows its linked cases and their liv
 
 For the Leads UI only. Mission Control doesn't call it.
 
-- `GET /api/companies?q=&kind=&country=&category=&convention=&has_lead=&page=` and `GET /api/companies/{id}` (contacts, appearances, leads).
+- `GET /api/companies?q=&role=&country=&category=&convention=&has_lead=&page=` and `GET /api/companies/{id}` (contacts, appearances, leads).
 - `PATCH /api/companies/{id}` and `PATCH /api/contacts/{id}`: edits, which add to `edited_fields`.
 - `POST /api/companies/{id}/sap-link {card_code}`: confirm a `resolve_customer` match.
+- `GET /api/meetings?company_id=&contact_id=&lead_id=`, `POST /api/meetings`, `PATCH /api/meetings/{id}`, and `POST|PATCH /api/meetings/{id}/actions`.
+- `GET /api/meetings/{id}/export.md` and `GET /api/companies/{id}/export.md`: the Obsidian export.
 - `POST /api/companies/{id}/leads`: the “Follow” button. Body: owner, contact_id, appearance_id, notes.
 - `GET /api/leads?status=&owner=&convention=` and `PATCH /api/leads/{id}` (status, owner, follow-up, notes, meeting-note URL).
 - `GET /api/leads/{id}/cases`: linked cases with live state from the MCPs.
@@ -237,9 +251,9 @@ There is no create-case endpoint.
 
 **One place for permissions, later.** SSO is the single place to sign in and manage access. Until that is built, roles are set up in Entra / the Microsoft 365 admin as far as it allows. No per-table grant work on the loop's database.
 
-**Database.** `dbot_leads` owns and writes the `leads` schema only. It needs nothing on `public.*`, because cases come through cases-mcp.
+**Database.** `dbot_leads` owns the app's own database (`leads-db`). It has no login on dbot-db at all, because cases come through cases-mcp.
 
-**Mission Control.** A `SELECT` grant on `leads.lead_cases` for Mission Control's existing read-only role, so a case page can show “from lead X, electronica 2026”. No API token, no HTTP call to Leads. The grant is made by Leads' own migration on its own table.
+**Mission Control (optional).** Now that Leads has its own database, Mission Control can't join `leads.lead_cases` inside dbot. If a case page should show “from lead X, electronica 2026”, Leads creates a read-only role `leads_reader` with `SELECT` on `lead_cases` only, and Mission Control gets a second DSN to `leads-db` (open question 1). No API token either way.
 
 ---
 
@@ -296,28 +310,30 @@ bogo would only create Jira tickets for leads actually qualified, not all 3,665 
 
 **Still open**
 
-1. **Where Leads' tables live:** a `leads` schema in the same `dbot` database, with Leads' own migrations (assumed here, and needed for Mission Control's `SELECT` on `leads.lead_cases`), or a separate database on the same Postgres server (then Mission Control would read lead links some other way)?
+1. **Mission Control link:** should Mission Control show “from lead X” on a case page now (a read-only `leads_reader` DSN to `leads-db`), or later?
 2. **Hostname:** is `leads.dayo-tech.com` OK?
 3. **MCP identity:** use D-bot's existing tokens for now (assumed here), or add a read-only `leads` identity to cases-mcp's `identities.py` and its own sap-mcp token? The second is a small change to the MCP config, not to the loop's database.
 4. **CardCode on companies:** is storing the confirmed `sap_card_code` as a pointer OK (assumed here), or should Leads re-resolve through `resolve_customer` every time and store nothing from SAP?
 5. **SAP business partner for a brand-new company:** who creates it? sap-mcp has no create-BP tool. Until one exists, cases for new companies are found by contact email and domain.
 6. **Status list and Excel mapping:** are the statuses in section 9 right, and how do Zima's “Lead status” strings map onto them on the first import?
-7. Where do meeting notes live long-term: Obsidian, the wiki, or just a URL (`meeting_note_url`)?
-8. What's the source of truth for follow-up dates once the app is live: the app, the calendar or Jira DEV-205? (Section 7 assumes the app, with Jira only filling empty dates.)
-9. How do we dedupe Hebrew names, companies with no domain, and groups with several legal entities? (Planned: domain, then normalized name, manual merge for groups.)
+7. What's the source of truth for follow-up dates once the app is live: the app, the calendar or Jira DEV-205? (Assumed: the app, from meeting actions; Jira only fills empty dates; the M365 calendar comes later.)
+8. How do we dedupe Hebrew names, companies with no domain, and groups with several legal entities? (Planned: domain, then normalized name, manual merge for groups.)
 
 **Already decided (kept here so they aren't re-opened)**
 
 - Import all 3,665 companies into the directory. A lead is created only by “Follow”, except the one-time migration of Excel rows with lead activity.
 - Leads are followed, never closed. No won/lost stages, no close or drop logic, no one-open-lead rule.
-- Separate app parallel to Mission Control. Mission Control stays read-only. Leads writes only `leads.*`.
+- Separate app parallel to Mission Control: own repo, deployment, Entra app, backend (FastAPI) and frontend (React SPA). Mission Control stays read-only.
+- Own database (`leads-db`) on its own external volume, separate from dbot-db. `compose down` / `up` keeps all data.
+- Meetings (dated entries with actions) are stored in the app. Obsidian is an export only. Email and M365 calendar integrations later, from the dashboard.
+- Role is per show on the appearance (lead, supplier, both, ignore). Company kind is derived.
 - Link only, never create a case. No Temporal path.
 - No changes to the loop's database: no migration, extension, trigger, column or grant on `public.*`. Plain `ILIKE` search.
 - Cases come through cases-mcp and SAP through sap-mcp. No SAP document ids stored.
-- Own Entra app for Leads. `leads-auth` is the only way to port 8000. Mission Control reads `leads.lead_cases` by `SELECT`, no token.
+- Own Entra app for Leads. `leads-auth` is the only way to port 8000. No API token for Mission Control.
 - No GDPR section: Leads uses only internal data collected with a waiver / NDA, never shared.
 - Name stays Leads.
-- Deploy on yos-dev as one container, no published port, behind edge Caddy and `leads-auth`.
+- Deploy on yos-dev as the `leads` stack (app + `leads-db`), no published port, behind edge Caddy and `leads-auth`.
 
 ---
 
@@ -328,6 +344,7 @@ bogo would only create Jira tickets for leads actually qualified, not all 3,665 
 - Joining the Temporal Docker network.
 - Renaming the system Pipeline (`pipeline.dayo-tech.com`, `services/pipeline/`, `pipeline-auth`, `dbot_pipeline`, `pipeline_viewer` / `pipeline_editor`).
 - A path route under `cases.dayo-tech.com/leads`.
+- **From V2:** HTMX/daisyUI copied from Mission Control; a `leads` schema inside the `dbot` database or on dbot-db's volume; `meeting_note_url` as the place for notes; a stored company `kind`; Mission Control's `SELECT` on `leads.lead_cases` inside dbot.
 - **From V1:** polling `public.events` as the main mechanism (any cursor, `seq` or `id`) and a `sync_state` table; `cases.updated_at` plus a trigger; LISTEN/NOTIFY; dbot-db migration 006; `pg_trgm`; per-column `SELECT` grants on `public.mails` / `cases` / `events` for `dbot_leads`; storing or choosing between DocEntry and DocNum; won/lost/in_play/quoted stages set by a sync job; manual drop; the one-open-lead-per-company index; the outcome sync from `case.closed`; the GDPR section and its export/delete endpoints; a Mission Control bearer token to `leads:8000`.
 
 ---
@@ -336,10 +353,10 @@ bogo would only create Jira tickets for leads actually qualified, not all 3,665 
 
 Planning only; don't start until Vartan says to build.
 
-1. **Directory:** `leads` schema and its own migrations, the Excel import with dry run and merge rules, the companies and suppliers lists, search and filters, the detail window with local data.
-2. **Following:** the “Follow” button, status, owner, notes, follow-up date, meeting-note URL, the board.
+1. **Directory:** the `leads` stack with `leads-db` on its external volumes, migrations, the Excel import with dry run and merge rules, the companies and suppliers lists, search and filters, the detail window with local data.
+2. **Following:** the “Follow” button, status, owner, notes, follow-up date, the board, and meetings with actions (markdown editor, history per company and contact).
 3. **Knowledge in the window:** live SAP card (`get_customer_card`), “Find in SAP” (`resolve_customer`), supplier prices, and linked cases shown through `case_story` and `find_quotation` / `find_order`.
-4. **Case links:** manual link and unlink, suggestions on window open, optional nightly re-check. Mission Control's `SELECT` on `leads.lead_cases`.
+4. **Case links:** manual link and unlink, suggestions on window open, optional nightly re-check. Optional Mission Control read-only link.
 
 ---
 
@@ -351,11 +368,12 @@ Planning only; don't start until Vartan says to build.
 - MCP client: only read tools are called (a test fails if a write tool name is used); timeouts and an MCP being down show “not available” on the card instead of breaking the page.
 - Matching: CardCode, then contact email, then domain; free-mail and `dayo-tech.com` excluded for domains; dismissed suggestions don't come back.
 - Auth: a request that reaches the app without passing `leads-auth` is impossible on the network (checked in the compose files), and viewers can't write.
-- No loop changes: the Leads migrations touch only the `leads` schema (a test runs them on an empty database and checks nothing outside `leads` changed).
+- No loop changes: the app has no DSN to dbot-db at all (checked in the compose files and config).
+- Persistence: load data, run `docker compose down` then `up` (and a rebuild of the app image), and check every row and uploaded file is still there.
 
-**Backups.** `services/dbot-db/README.md` (read 10 Nov 2026) lists a nightly `pg_dump` (14 days) plus a restore test as “Still to add”. If Leads lives in the `dbot` database, its schema is covered by that dump once it exists; until then it shares the same gap. The Excel files stay as the fallback for the catalogue.
+**Backups.** `leads-db` is its own database, so it needs its own nightly `pg_dump` of `leads` plus a copy of the `leads-files` volume, and one restore test before real data. A volume that survives `compose down` is not a backup. The Excel files stay as the fallback for the catalogue.
 
-**Rollback.** Drop schema `leads`, remove `dbot_leads`, remove the `leads` stack and `leads-auth`, the Entra app, the DNS name and the Caddy labels. Nothing in the loop's tables, the MCPs or Temporal needs undoing, because none of them were changed.
+**Rollback.** Remove the `leads` stack (app and `leads-db`), and only if the data should go too, its volumes `leads-pgdata` and `leads-files`. Remove `leads-auth`, the Entra app, the DNS name and the Caddy labels. Nothing in the loop's tables, the MCPs or Temporal needs undoing, because none of them were changed.
 
 ---
 
