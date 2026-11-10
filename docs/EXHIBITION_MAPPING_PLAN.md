@@ -107,14 +107,25 @@ lead pipeline dashboard (one app)
 
 ---
 
-## 6. Open questions
+## 6. Questions and answers
 
-1. Final hardware tag list beyond RAM, GPU, disks and internal parts.
-2. Who maps: one person, or split by hall or category?
-3. Who goes to which halls at electronica 2026, and on which days?
-4. Do we need a hall map image, or is the hall-and-booth list enough?
-5. Does the floor list need to work offline?
-6. Where visit notes go long-term: the app, Obsidian, or both (link only).
+**Q1. What is the final hardware tag list beyond RAM, GPU, disks and internal parts?**
+A: It is not a fixed set decided upfront. Each exhibition has its own categories from its website data, and we want as many categories as possible, grouped on top of the raw tags. The final list is decided after going through each show's information.
+
+**Q2. Who maps: one person, or split by hall or category?**
+A: Open.
+
+**Q3. Who goes to which halls at electronica 2026, and on which days?**
+A: Open.
+
+**Q4. Do we need a hall map image, or is the hall-and-booth list enough?**
+A: Open.
+
+**Q5. Does the floor list need to work offline?**
+A: Open.
+
+**Q6. Where do visit notes go long-term: the app, Obsidian, or both (link only)?**
+A: Open.
 
 ---
 
